@@ -21,9 +21,9 @@ class MainEmployeeScreenState extends State<MainEmployeeScreen> {
     super.initState();
     _pages = [
       HomeSliverContent(listReport: listReport), // Danh sách báo cáo
-      const Center(child: Text("Danh sách đơn hàng")),
-      const Center(child: Text("Lịch sử")),
-      const Center(child: Text("Cài đặt")),
+      //const Center(child: Text("Danh sách")),
+      //const Center(child: Text("Lịch sử")),
+      //const Center(child: Text("Cài đặt")),
     ];
   }
 
