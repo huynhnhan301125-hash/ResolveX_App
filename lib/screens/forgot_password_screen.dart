@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:go_router/go_router.dart';
 import 'package:pinput/pinput.dart';
 import 'package:flutter/material.dart';
+import 'package:resolvex_mobile_app/utils/app_validate.dart';
 import 'package:resolvex_mobile_app/widgets/rx_textfield.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -12,6 +13,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 }
 
 class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+  final _formKey=GlobalKey<FormState>();
   final _emailController = TextEditingController();
 
   @override
@@ -30,52 +32,58 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           padding: EdgeInsets.all(10),
           child: Center(
             child: SingleChildScrollView(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    "Xác nhận email",
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 30),
-                  RXTextField(
-                    controller: _emailController,
-                    labelText: "Email",
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _emailController.clear();
-                        });
-                      },
-                      icon: Icon(Icons.clear),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Xác nhận email",
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            return OTPDialog();
-                          },
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                    SizedBox(height: 30),
+                    RXTextField(
+                      controller: _emailController,
+                      labelText: "Email",
+                      suffixIcon: IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _emailController.clear();
+                          });
+                        },
+                        icon: Icon(Icons.clear),
                       ),
-                      child: Text(
-                        "Xác nhận",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                      validator: (value)=>AppValidate.checkEmail(value, "Email"),
+                    ),
+                    SizedBox(height: 30),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if(_formKey.currentState!.validate()) {
+                            showDialog(
+                              context: context,
+                              builder: (context) {
+                                return OTPDialog();
+                              },
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                        ),
+                        child: Text(
+                          "Xác nhận",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -115,19 +123,19 @@ class OTPDialogState extends State<OTPDialog> {
     super.dispose();
   }
 
-  void startTimer()
-  {
-    timer = Timer.periodic(const Duration(seconds: 1), (
-        timer,
-        ) {
-      setState(() {
-        if (seconds > 0) {
-          seconds--;
-        } else {
-          sendAgain = true;
-          timer.cancel();
-        }
-      });
+  void startTimer() {
+    timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      // Kiểm tra xem Dialog còn hiển thị không trước khi update UI
+      if (mounted) {
+        setState(() {
+          if (seconds > 0) {
+            seconds--;
+          } else {
+            sendAgain = true;
+            timer.cancel();
+          }
+        });
+      }
     });
   }
 
@@ -141,7 +149,7 @@ class OTPDialogState extends State<OTPDialog> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:  0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 7,
             spreadRadius: 1,
             offset: Offset(0, 0),
@@ -200,7 +208,8 @@ class OTPDialogState extends State<OTPDialog> {
                     // Đóng Dialog trước để trả context về màn hình chính, tránh xung đột điều hướng
                     Navigator.pop(context);
                     // Chuyển sang màn hình cập nhật pass, kèm theo "thẻ bài" extra = true (đi từ luồng OTP)
-                    context.push('/update_password_screen',extra: true);},
+                    context.pushNamed('update-password', extra: true);
+                  },
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
                   child: Text(
                     "Gửi",
