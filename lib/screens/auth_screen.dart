@@ -1,5 +1,5 @@
-
 import 'package:flutter/material.dart';
+import 'package:resolvex_mobile_app/utils/app_validate.dart';
 import 'package:resolvex_mobile_app/widgets/rx_textfield.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,108 +7,89 @@ class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
   @override
-  State<StatefulWidget> createState() => AuthScreenState();
+  State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _userNameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool isObscure = true;
-  bool isPassword = true;
+
+  void _handleLogin() {
+    // Kiểm tra tính hợp lệ của Form
+    if (_formKey.currentState!.validate()) {
+      // Logic giả định: Nếu hợp lệ thì chuyển trang
+      context.pushNamed('main-employee');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return Scaffold(
-      // GestureDetector: Widget dùng để nhận diện các thao tác từ người dùng.
-      // Ở đây dùng để bắt sự kiện chạm vào vùng trống trên màn hình nhằm ẩn bàn phím (unfocus).
-
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
-
-        onTap: () {
-          FocusScope.of(context).unfocus();
-        },
+        onTap: () => FocusScope.of(context).unfocus(),
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(20),
           child: Center(
             child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  SizedBox(height: 50),
-                  Text(
-                    "ResolveX",
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    "by HLTN",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 30),
-                  RXTextField(
-                    controller: _userNameController,
-                    labelText: "Tài khoản",
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _userNameController.clear();
-                        });
-                      },
-                      icon: Icon(Icons.clear),
+              child: Form( // Bọc Form ở đây để dùng _formKey
+                key: _formKey,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 50),
+                    const Text(
+                      "ResolveX",
+                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  SizedBox(height: 20),
-                  RXTextField(
-                    controller: _passwordController,
-                    labelText: "Mật khẩu",
-                    obscure: isObscure,
-                    isPassword: isPassword,
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          isObscure = !isObscure;
-                        });
-                      },
-                      icon: Icon(
-                        isObscure ? Icons.visibility_off : Icons.visibility,
+                    const Text(
+                      "Hệ thống báo cáo sự cố",
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 40),
+                    RXTextField(
+                      controller: _emailController,
+                      labelText: "Email",
+                      prefixIcon: const Icon(Icons.person),
+                      // Thêm validator cho RXTextField (cần cập nhật RXTextField để nhận callback này)
+                      validator: (value)=>AppValidate.checkEmail(value, "Email đăng nhập"),
+                    ),
+                    const SizedBox(height: 20),
+                    RXTextField(
+                      controller: _passwordController,
+                      labelText: "Mật khẩu",
+                      obscure: isObscure,
+                      isPassword: true,
+                      prefixIcon: const Icon(Icons.lock),
+                      suffixIcon: IconButton(
+                        onPressed: () => setState(() => isObscure = !isObscure),
+                        icon: Icon(isObscure ? Icons.visibility_off : Icons.visibility),
+                      ),
+                      validator: (value)=>AppValidate.checkEmpty(value, "Mật khẩu"),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => context.pushNamed('forgot-password',extra: true),
+                        child: const Text("Quên mật khẩu?"),
                       ),
                     ),
-                  ),
-                  SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(
-                      onPressed: () {
-                        context.push('/forgot_password_screen');
-                      },
-                      child: Text(
-                        "Quên mật khẩu?",
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        context.push('/main_emp_screen');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.yellow.shade600,
-                      ),
-                      child: Text(
-                        "Đăng nhập",
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                    const SizedBox(height: 30),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: _handleLogin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.yellow.shade700,
+                          foregroundColor: Colors.black,
                         ),
+                        child: const Text("ĐĂNG NHẬP", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -119,7 +100,7 @@ class AuthScreenState extends State<AuthScreen> {
 
   @override
   void dispose() {
-    _userNameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
