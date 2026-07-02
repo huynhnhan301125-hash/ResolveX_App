@@ -20,7 +20,7 @@
     - Thiết kế lại Body danh sách Ticket (Dạng Card, không làm kiểu bảng xấu nữa).
     - Phân loại màu sắc theo trạng thái (Đang chờ, Đã xong, Đang sửa).
     - Xây dựng menu tác vụ ( trang chủ, danh sách báo cáo, tạo báo cáo mới, lịch sử, cài đặt).
-- [ ] **Màn hình chi tiết báo cáo:
+- [X] **Màn hình chi tiết báo cáo:
     - Hiện các trường thông tin cơ bản, chi tiết của báo cáo: mô tả, hình ảnh,..,
 - [ ] **Màn hình Create Ticket (Full Screen):**
     - Chuyển từ Popup sang trang riêng.
