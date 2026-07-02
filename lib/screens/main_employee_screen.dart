@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:resolvex_mobile_app/models/report_model.dart';
+import 'package:resolvex_mobile_app/widgets/rx_customscrollview.dart';
 import 'package:resolvex_mobile_app/widgets/rx_icon.dart';
 import 'package:resolvex_mobile_app/widgets/rx_container.dart';
-
 
 class MainEmployeeScreen extends StatefulWidget {
   const MainEmployeeScreen({super.key});
@@ -13,7 +13,20 @@ class MainEmployeeScreen extends StatefulWidget {
 }
 
 class MainEmployeeScreenState extends State<MainEmployeeScreen> {
-  int selectedIndex = 0;
+  int selectedIndex = 0; //: Dùng để theo dõi xem người dùng đang đứng ở Tab nào
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      HomeSliverContent(listReport: listReport), // Danh sách báo cáo
+      const Center(child: Text("Danh sách đơn hàng")),
+      const Center(child: Text("Lịch sử")),
+      const Center(child: Text("Cài đặt")),
+    ];
+  }
+
   List<ReportModel> listReport = [
     ReportModel(
       reportId: "3011255",
@@ -51,6 +64,33 @@ class MainEmployeeScreenState extends State<MainEmployeeScreen> {
       status: Status.pending,
       reportDate: DateTime.now(),
     ),
+    ReportModel(
+      reportId: "3711255",
+      empId: "NV005",
+      problemRoom: "C05",
+      problemType: ProblemType.software,
+      level: Level.high,
+      status: Status.pending,
+      reportDate: DateTime.now(),
+    ),
+    ReportModel(
+      reportId: "6311255",
+      empId: "NV006",
+      problemRoom: "C05",
+      problemType: ProblemType.software,
+      level: Level.high,
+      status: Status.pending,
+      reportDate: DateTime.now(),
+    ),
+    ReportModel(
+      reportId: "2311255",
+      empId: "NV007",
+      problemRoom: "C05",
+      problemType: ProblemType.software,
+      level: Level.high,
+      status: Status.pending,
+      reportDate: DateTime.now(),
+    ),
   ];
 
   @override
@@ -61,7 +101,7 @@ class MainEmployeeScreenState extends State<MainEmployeeScreen> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: Colors.black.withOpacity(0.1),
               blurRadius: 6,
               spreadRadius: 1,
             ),
@@ -77,57 +117,7 @@ class MainEmployeeScreenState extends State<MainEmployeeScreen> {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            // Thiết lập độ cao tối đa cho Header khi chưa cuộn.
-            expandedHeight: 100,
-            // Hiển thị lại AppBar ngay lập tức khi vừa kéo xuống.
-            floating: true,
-            // Cố định AppBar ở đỉnh màn hình (không cho cuộn trôi đi).
-            pinned: false,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            backgroundColor: Colors.yellow.shade600,
-            //Tự động tạo nút Back nếu màn hình có trang trước đó.
-            automaticallyImplyLeading: false,
-            //Chứa nội dung (ảnh, tên...) có khả năng co giãn theo AppBar.
-            flexibleSpace: FlexibleSpaceBar(
-              background: Padding(
-                padding: const EdgeInsets.only(top: 35, left: 10, bottom: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    CircleAvatar(backgroundColor: Colors.green, radius: 35),
-                    SizedBox(width: 10),
-                    Text(
-                      "Huynh Le Trong Nhan,",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          //Chuyển đổi widget thông thường (SizedBox, Container...) thành dạng Sliver để đưa vào danh sách cuộn.
-          SliverToBoxAdapter(child: SizedBox(height: 10)),
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              childCount: listReport.length,
-              (context, index) => RXContainer(
-                reportModel: listReport[index],
-                onTap: () {
-                  context.push('/detail_report_screen');
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
+      body: _pages[selectedIndex],
       bottomNavigationBar: BottomAppBar(
         shape: CircularNotchedRectangle(),
         height: 60,
@@ -143,6 +133,7 @@ class MainEmployeeScreenState extends State<MainEmployeeScreen> {
                 });
               },
               isSelected: selectedIndex == 0,
+              size: 26,
             ),
             RXIcon(
               iconData: Icons.receipt_long,
@@ -152,6 +143,7 @@ class MainEmployeeScreenState extends State<MainEmployeeScreen> {
                 });
               },
               isSelected: selectedIndex == 1,
+              size: 26,
             ),
             Spacer(),
             RXIcon(
@@ -162,6 +154,7 @@ class MainEmployeeScreenState extends State<MainEmployeeScreen> {
                 });
               },
               isSelected: selectedIndex == 2,
+              size: 26,
             ),
             RXIcon(
               iconData: Icons.settings,
@@ -171,10 +164,65 @@ class MainEmployeeScreenState extends State<MainEmployeeScreen> {
                 });
               },
               isSelected: selectedIndex == 3,
+              size: 26,
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class HomeSliverContent extends StatelessWidget {
+  const HomeSliverContent({super.key, required this.listReport});
+
+  final List<ReportModel> listReport;
+
+  @override
+  Widget build(BuildContext context) {
+    // TODO: implement build
+    return RXCustomScrollView(
+      expandedHeight: 80,
+      showBackButton: false,
+      flexibleSpace: FlexibleSpaceBar(
+        background: Padding(
+          padding: const EdgeInsets.only(top: 40, left: 20),
+          child: Row(
+            children: [
+              const CircleAvatar(backgroundColor: Colors.green, radius: 30),
+              const SizedBox(width: 15),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text("Xin chao,", style: TextStyle(fontSize: 16)),
+                  Text(
+                    "Trong Nhan",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      sliver: [
+        SliverPadding(
+          padding: const EdgeInsets.only(top: 10),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => RXContainer(
+                reportModel: listReport[index],
+                onTap: () => context.pushNamed(
+                  "detail-report",
+                  extra: listReport[index],
+                ),
+              ),
+              childCount: listReport.length
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
