@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:resolvex_mobile_app/utils/app_styles.dart';
 
+/// [RXCustomScrollView] là widget bọc CustomScrollView với SliverAppBar chuẩn.
+/// Tất cả các Tab màn hình chính và CreateReportScreen đều dùng widget này
+/// để đảm bảo đồng bộ giao diện (hiệu ứng AppBar thu/mở khi cuộn).
 class RXCustomScrollView extends StatelessWidget {
   const RXCustomScrollView({
     super.key,
@@ -21,25 +25,21 @@ class RXCustomScrollView extends StatelessWidget {
     return CustomScrollView(
       slivers: [
         SliverAppBar(
-          title: title,// Tiêu đề của màn hình
-          expandedHeight: expandedHeight,// Độ cao tối đa của phần đầu trang (AppBar) khi chưa cuộn
-          flexibleSpace: flexibleSpace,// Đây là nội dung nằm "bên dưới" tiêu đề
-          automaticallyImplyLeading: showBackButton,//Quyết định xem có hiện nút mũi tên "Quay lại" hay không
-          pinned: true, // Giữ thanh tiêu đề ở đỉnh
-          floating: true, // Hiện lại thanh tiêu đề nhanh khi kéo xuống
-          snap: true, // Đi kèm với floating để hiện mượt hơn
-          backgroundColor: Colors.yellow.shade600,
+          title: title,
+          expandedHeight: expandedHeight,
+          flexibleSpace: flexibleSpace,
+          automaticallyImplyLeading: showBackButton,
+          pinned: true,   // Giữ thanh tiêu đề ở đỉnh khi cuộn
+          floating: true, // Hiện lại nhanh khi kéo xuống
+          snap: true,     // Đi kèm floating để hiện mượt hơn
+          // Dùng AppColors.brandPrimary thay vì Colors.yellow.shade600 hardcode
+          backgroundColor: AppColors.brandPrimary,
           shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(30)
-            )
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
           ),
-          toolbarHeight: 20,// // Thiết lập chiều cao khi đã thu nhỏ
-
         ),
-        ...sliver,// Dấu ba chấm (...) gọi là Spread Operator
-        /* Lấy phần tử trong danh sách sliver truyền vào và
-        "trải" chúng ra ngay sau SliverAppBar */
+        // Spread operator: "trải" các phần tử từ list sliver vào ngay sau SliverAppBar
+        ...sliver,
       ],
     );
   }

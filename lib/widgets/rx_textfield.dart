@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:resolvex_mobile_app/utils/app_styles.dart';
 
 class RXTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -7,15 +8,17 @@ class RXTextField extends StatelessWidget {
   final Widget? prefixIcon;
   final bool obscure;
   final bool isPassword;
-  final String? Function(String?)? validator; // Thêm validator
+  final String? Function(String?)? validator;
   final TextInputType? keyboardType;
+  final int? maxLines;
+  final int? minLines;
 
-  // Update sau
-  // final TextInputAction? textInputAction; // Nút hành động trên bàn phím
-  // final ValueChanged<String>? onFieldSubmitted; // Sự kiện khi nhấn Enter
-  // final ValueChanged<String>? onChanged; // Sự kiện khi chữ thay đổi
-  // final FocusNode? focusNode; // Quản lý tiêu điểm (focus)
-  // final Iterable<String>? autofillHints; // Gợi ý tự động điền
+  // Dự kiến mở rộng trong tương lai:
+  // final TextInputAction? textInputAction;
+  // final ValueChanged<String>? onFieldSubmitted;
+  // final ValueChanged<String>? onChanged;
+  // final FocusNode? focusNode;
+  // final Iterable<String>? autofillHints;
 
   const RXTextField({
     super.key,
@@ -27,6 +30,8 @@ class RXTextField extends StatelessWidget {
     this.isPassword = false,
     this.validator,
     this.keyboardType,
+    this.maxLines,
+    this.minLines,
   });
 
   @override
@@ -36,29 +41,33 @@ class RXTextField extends StatelessWidget {
       obscureText: obscure,
       validator: validator,
       keyboardType: keyboardType,
+      maxLines: isPassword ? 1 : maxLines,
+      minLines: minLines,
       decoration: InputDecoration(
         labelText: labelText,
         prefixIcon: prefixIcon,
-        // Hiển thị suffixIcon (như icon xóa hoặc hiện pass) 
-        // Chúng ta để controller tự quản lý việc hiển thị icon thông qua logic ở màn hình gọi
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        fillColor: AppColors.surfaceWhite,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppStyles.spaceL,
+          vertical: AppStyles.spaceL,
+        ),
+        // Dùng AppStyles.radiusL thay vì magic number 15 — lặp lại 4 lần
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(width: 1.5, color: Colors.yellow.shade700),
+          borderRadius: AppStyles.brL,
+          borderSide: BorderSide(width: 1.5, color: AppColors.brandDark),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: AppStyles.brL,
           borderSide: const BorderSide(width: 2, color: Colors.black),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: AppStyles.brL,
           borderSide: const BorderSide(width: 1, color: Colors.red),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: AppStyles.brL,
           borderSide: const BorderSide(width: 2, color: Colors.red),
         ),
       ),
