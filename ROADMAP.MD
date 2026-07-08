@@ -22,7 +22,7 @@
     - Xây dựng menu tác vụ ( trang chủ, danh sách báo cáo, tạo báo cáo mới, lịch sử, cài đặt).
 - [X] **Màn hình chi tiết báo cáo:
     - Hiện các trường thông tin cơ bản, chi tiết của báo cáo: mô tả, hình ảnh,..,
-- [ ] **Màn hình Create Ticket (Full Screen):**
+- [X] **Màn hình Create Ticket (Full Screen):**
     - Chuyển từ Popup sang trang riêng.
     - Đổi nút "Reset" -> "Hủy".
     - Thêm nút "Quay lại" (Back) chuẩn cho tất cả trang.

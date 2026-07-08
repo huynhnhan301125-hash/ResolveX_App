@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pinput/pinput.dart';
-import 'package:flutter/material.dart';
+import 'package:resolvex_mobile_app/routers/app_router.dart';
+import 'package:resolvex_mobile_app/utils/app_styles.dart';
 import 'package:resolvex_mobile_app/utils/app_validate.dart';
 import 'package:resolvex_mobile_app/widgets/rx_textfield.dart';
 
@@ -13,23 +15,21 @@ class ForgotPasswordScreen extends StatefulWidget {
 }
 
 class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
-  final _formKey=GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Xác nhận email"),
+        title: const Text('Xác nhận email'),
         backgroundColor: Colors.transparent,
       ),
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () {
-          FocusScope.of(context).unfocus();
-        },
+        onTap: () => FocusScope.of(context).unfocus(),
         child: Padding(
-          padding: EdgeInsets.all(10),
+          padding: const EdgeInsets.all(AppStyles.spaceM),
           child: Center(
             child: SingleChildScrollView(
               child: Form(
@@ -37,48 +37,39 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      "Xác nhận email",
+                    const Text(
+                      'Xác nhận email',
                       style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
-                    SizedBox(height: 30),
+                    const SizedBox(height: AppStyles.spaceXXXL),
                     RXTextField(
                       controller: _emailController,
-                      labelText: "Email",
+                      labelText: 'Email',
                       suffixIcon: IconButton(
-                        onPressed: () {
-                          setState(() {
-                            _emailController.clear();
-                          });
-                        },
-                        icon: Icon(Icons.clear),
+                        onPressed: () => setState(() => _emailController.clear()),
+                        icon: const Icon(Icons.clear),
                       ),
-                      validator: (value)=>AppValidate.checkEmail(value, "Email"),
+                      validator: (value) => AppValidate.checkEmail(value, 'Email'),
                     ),
-                    SizedBox(height: 30),
+                    const SizedBox(height: AppStyles.spaceXXXL),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          if(_formKey.currentState!.validate()) {
+                          if (_formKey.currentState!.validate()) {
                             showDialog(
                               context: context,
-                              builder: (context) {
-                                return OTPDialog();
-                              },
+                              builder: (context) => const OTPDialog(),
                             );
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
+                          backgroundColor: AppColors.brandDark,
+                          foregroundColor: Colors.black,
                         ),
-                        child: Text(
-                          "Xác nhận",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        child: const Text(
+                          'Xác nhận',
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
@@ -99,6 +90,10 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 }
 
+// =============================================================================
+// OTP Dialog — Đặt cùng file vì chỉ được dùng bởi ForgotPasswordScreen
+// Đây là ví dụ của "widget private trong cùng file" mà không cần tách file riêng.
+// =============================================================================
 class OTPDialog extends StatefulWidget {
   const OTPDialog({super.key});
 
@@ -119,13 +114,12 @@ class OTPDialogState extends State<OTPDialog> {
 
   @override
   void dispose() {
-    timer!.cancel();
+    timer?.cancel(); // Dùng ?. thay ! để tránh null crash
     super.dispose();
   }
 
   void startTimer() {
     timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      // Kiểm tra xem Dialog còn hiển thị không trước khi update UI
       if (mounted) {
         setState(() {
           if (seconds > 0) {
@@ -141,38 +135,31 @@ class OTPDialogState extends State<OTPDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     final pinTheme = PinTheme(
       width: 45,
       height: 55,
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 7,
-            spreadRadius: 1,
-            offset: Offset(0, 0),
-          ),
-        ],
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.surfaceWhite,
+        boxShadow: AppStyles.shadowElevated,
+        borderRadius: AppStyles.brXXL,
       ),
     );
+
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(borderRadius: AppStyles.brM),
       child: Padding(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(AppStyles.spaceM),
         child: SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                "Nhập mã OTP",
+              const Text(
+                'Nhập mã OTP',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
               ),
-              SizedBox(height: 10),
-              Text("Vui lòng nhập mã OTP đã được gửi về email"),
-              SizedBox(height: 30),
+              const SizedBox(height: AppStyles.spaceS),
+              const Text('Vui lòng nhập mã OTP đã được gửi về email'),
+              const SizedBox(height: AppStyles.spaceXXXL),
               Pinput(
                 length: 4,
                 defaultPinTheme: pinTheme,
@@ -181,11 +168,9 @@ class OTPDialogState extends State<OTPDialog> {
                     border: Border.all(color: Colors.blue, width: 2),
                   ),
                 ),
-                separatorBuilder: (index) {
-                  return SizedBox(width: 15);
-                },
+                separatorBuilder: (index) => const SizedBox(width: 15),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: AppStyles.spaceS),
               TextButton(
                 onPressed: sendAgain
                     ? () {
@@ -197,27 +182,24 @@ class OTPDialogState extends State<OTPDialog> {
                       }
                     : null,
                 child: sendAgain
-                    ? Text("Gửi lại mã")
-                    : Text("Gửi lại mã sau ${seconds}s"),
+                    ? const Text('Gửi lại mã')
+                    : Text('Gửi lại mã sau ${seconds}s'),
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: AppStyles.spaceXXXL),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Đóng Dialog trước để trả context về màn hình chính, tránh xung đột điều hướng
-                    Navigator.pop(context);
-                    // Chuyển sang màn hình cập nhật pass, kèm theo "thẻ bài" extra = true (đi từ luồng OTP)
-                    context.pushNamed('update-password', extra: true);
+                    Navigator.pop(context); // Đóng Dialog
+                    context.pushNamed(RouteNames.updatePassword, extra: true);
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                  child: Text(
-                    "Gửi",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.brandDark,
+                    foregroundColor: Colors.black,
+                  ),
+                  child: const Text(
+                    'Gửi',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:resolvex_mobile_app/routers/app_router.dart';
+import 'package:resolvex_mobile_app/utils/app_styles.dart';
 import 'package:resolvex_mobile_app/utils/app_validate.dart';
 import 'package:resolvex_mobile_app/widgets/rx_textfield.dart';
 import 'package:go_router/go_router.dart';
@@ -11,16 +13,24 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
+  // _formKey là mã định danh duy nhất (GlobalKey) để quản lý trạng thái của Form.
+  // Nhờ key này ta có thể kích hoạt các hàm validator của toàn bộ các ô nhập liệu bên trong Form.
   final _formKey = GlobalKey<FormState>();
+
+  // Bộ điều khiển (TextEditingController) giúp lắng nghe và lấy nội dung chữ
+  // mà người dùng gõ vào ô email và mật khẩu. Cần dispose() khi hủy màn hình để tránh rò rỉ bộ nhớ.
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  // Biến trạng thái ẩn/hiện mật khẩu (true = hiển thị dạng ***, false = hiện rõ chữ)
   bool isObscure = true;
 
   void _handleLogin() {
-    // Kiểm tra tính hợp lệ của Form
+    // currentState!.validate(): Kích hoạt toàn bộ hàm validator của các TextFormField con.
+    // Nếu tất cả hợp lệ (trả về null) -> hàm validate() sẽ trả về true.
     if (_formKey.currentState!.validate()) {
-      // Logic giả định: Nếu hợp lệ thì chuyển trang
-      context.pushNamed('main-employee');
+      // Dùng RouteNames thay vì hardcode String 'main-employee'
+      context.pushNamed(RouteNames.mainEmployee);
     }
   }
 
@@ -29,36 +39,36 @@ class _AuthScreenState extends State<AuthScreen> {
     return Scaffold(
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
+        // Khi bấm vào bất kỳ vùng trống nào trên màn hình -> tự động đóng bàn phím ảo (unfocus)
         onTap: () => FocusScope.of(context).unfocus(),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(AppStyles.spaceXL),
           child: Center(
             child: SingleChildScrollView(
-              child: Form( // Bọc Form ở đây để dùng _formKey
+              child: Form(
                 key: _formKey,
                 child: Column(
                   children: [
                     const SizedBox(height: 50),
                     const Text(
-                      "ResolveX",
+                      'ResolveX',
                       style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
                     ),
                     const Text(
-                      "Hệ thống báo cáo sự cố",
+                      'Hệ thống báo cáo sự cố',
                       style: TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                     const SizedBox(height: 40),
                     RXTextField(
                       controller: _emailController,
-                      labelText: "Email",
+                      labelText: 'Email',
                       prefixIcon: const Icon(Icons.person),
-                      // Thêm validator cho RXTextField (cần cập nhật RXTextField để nhận callback này)
-                      validator: (value)=>AppValidate.checkEmail(value, "Email đăng nhập"),
+                      validator: (value) => AppValidate.checkEmail(value, 'Email đăng nhập'),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppStyles.spaceXL),
                     RXTextField(
                       controller: _passwordController,
-                      labelText: "Mật khẩu",
+                      labelText: 'Mật khẩu',
                       obscure: isObscure,
                       isPassword: true,
                       prefixIcon: const Icon(Icons.lock),
@@ -66,26 +76,29 @@ class _AuthScreenState extends State<AuthScreen> {
                         onPressed: () => setState(() => isObscure = !isObscure),
                         icon: Icon(isObscure ? Icons.visibility_off : Icons.visibility),
                       ),
-                      validator: (value)=>AppValidate.checkEmpty(value, "Mật khẩu"),
+                      validator: (value) => AppValidate.checkEmpty(value, 'Mật khẩu'),
                     ),
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () => context.pushNamed('forgot-password',extra: true),
-                        child: const Text("Quên mật khẩu?"),
+                        onPressed: () => context.pushNamed(RouteNames.forgotPassword),
+                        child: const Text('Quên mật khẩu?'),
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: AppStyles.spaceXXXL),
                     SizedBox(
                       width: double.infinity,
                       height: 55,
                       child: ElevatedButton(
                         onPressed: _handleLogin,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.yellow.shade700,
+                          backgroundColor: AppColors.brandDark,
                           foregroundColor: Colors.black,
                         ),
-                        child: const Text("ĐĂNG NHẬP", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        child: const Text(
+                          'ĐĂNG NHẬP',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
                       ),
                     ),
                   ],
