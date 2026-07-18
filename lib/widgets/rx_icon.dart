@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:resolvex_mobile_app/utils/app_styles.dart';
+import 'package:resolvex_mobile_app/core/theme/theme.dart';
 
 /// [RXIcon] là widget icon dùng cho Bottom Navigation Bar.
 /// Hỗ trợ hiệu ứng chuyển màu mượt mà (AnimatedContainer) khi tab được chọn.
@@ -35,7 +35,9 @@ class RXIcon extends StatelessWidget {
           ),
           child: Icon(
             iconData,
-            color: isSelected ? Colors.black : Colors.black54,
+            color: isSelected 
+              ? (Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.black) // Keep black icon on yellow background for both mode, or use onSurface? Wait, yellow background is AppColors.brandPrimary. So black is always good on yellow.
+              : (Theme.of(context).iconTheme.color ?? Colors.grey),
             size: size,
           ),
         ),

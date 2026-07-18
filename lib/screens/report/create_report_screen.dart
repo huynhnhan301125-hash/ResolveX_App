@@ -5,19 +5,21 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:resolvex_mobile_app/models/report_model.dart';
-import 'package:resolvex_mobile_app/utils/app_styles.dart';
+import 'package:resolvex_mobile_app/services/report_service.dart';
+import 'package:resolvex_mobile_app/core/theme/theme.dart';
 import 'package:resolvex_mobile_app/utils/app_validate.dart';
 import 'package:resolvex_mobile_app/widgets/rx_customscrollview.dart';
 import 'package:resolvex_mobile_app/widgets/rx_textfield.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CreateReportScreen extends StatefulWidget {
   const CreateReportScreen({super.key});
 
   @override
-  State<StatefulWidget> createState() => CreateReportScreenState();
+  State<StatefulWidget> createState() => _CreateReportScreenState();
 }
 
-class CreateReportScreenState extends State<CreateReportScreen> {
+class _CreateReportScreenState extends State<CreateReportScreen> {
   // GlobalKey để quản lý Form validation
   final _formKey = GlobalKey<FormState>();
 
@@ -35,6 +37,8 @@ class CreateReportScreenState extends State<CreateReportScreen> {
   DateTime _selectedDate = DateTime.now();
   // Thư viện ImagePicker để tương tác với máy ảnh / thư viện của máy
   final ImagePicker _picker = ImagePicker();
+  // Lây ID của user đang đăng nhập bằng supabase
+  String currentId = Supabase.instance.client.auth.currentUser!.id;
 
   @override
   void dispose() {
@@ -79,32 +83,12 @@ class CreateReportScreenState extends State<CreateReportScreen> {
   /// Hàm xử lý gửi báo cáo sự cố
   Future<void> _submitReport() async {
     if (_formKey.currentState!.validate()) {
-      // 1. Tạo đối tượng ReportModel từ các thông tin thu thập được trên Form
-      final newReport = ReportModel(
-        reportId: 'RP${DateTime.now().millisecondsSinceEpoch}', // ID ngẫu nhiên theo timestamp
-        empId: 'EMP_001', // ID nhân viên tạm thời (sau này lấy từ auth session)
-        problemRoom: _roomController.text,
-        problemType: _selectedType,
-        level: _selectedLevel,
-        problemDescription: _descriptionController.text,
-        imageUrl: _selectedImage?.path,
-        status: Status.pending,
-        reportDate: _selectedDate,
-      );
 
-      // Nhóm tất cả print debug vào một khối if duy nhất để dễ kiểm soát
-      if (kDebugMode) {
-        print('=== BÁO CÁO ĐÃ TẠO ===');
-        print('Phòng: ${newReport.problemRoom}');
-        print('Lỗi: ${newReport.problemType.label}');
-        print('Thời gian: ${newReport.reportDate}');
-        print('Đường dẫn ảnh: ${newReport.imageUrl ?? 'Không có ảnh'}');
-      }
-
-      // 2. Hiển thị Dialog thông báo chờ (Loading Dialog)
+      // 1. Hiện loading dialog TRƯỚC khi gọi mạng
+      // barrierDismissible: false -> người dùng không bấm ra ngoài tắt được
       showDialog(
         context: context,
-        barrierDismissible: false, // Ngăn người dùng bấm ra ngoài để tắt dialog
+        barrierDismissible: false,
         builder: (context) => const AlertDialog(
           content: Row(
             children: [
@@ -116,14 +100,46 @@ class CreateReportScreenState extends State<CreateReportScreen> {
         ),
       );
 
-      // Giả lập độ trễ gửi dữ liệu lên server (1 giây)
-      await Future.delayed(const Duration(seconds: 1));
+      try {
+        // 2. GỌI SUPABASE + AWAIT (chờ DB insert xong mới chạy tiếp)
+        // Thiếu await -> app không chờ -> đóng màn hình ngay dù DB chưa xong
+        // savedReport là object THẬT được DB trả về (có reportId, reportDate thật)
+        final ReportModel savedReport = await ReportService().createReport(
+          empId: currentId, // UID thật lấy từ Supabase Auth session (dòng 43)
+          problemRoom: _roomController.text.trim(),
+          problemType: _selectedType,
+          level: _selectedLevel,
+          problemDescription: _descriptionController.text.trim().isEmpty
+              ? null
+              : _descriptionController.text.trim(),
+        );
 
-      if (mounted) {
-        // 3. Tắt loading dialog bằng rootNavigator: true
-        Navigator.of(context, rootNavigator: true).pop();
-        // 4. Đóng màn hình tạo báo cáo và trả đối tượng newReport về cho màn hình trước
-        context.pop(newReport); 
+        if (kDebugMode) {
+          print('=== BÁO CÁO ĐÃ LƯU LÊN SUPABASE ===');
+          print('Report ID thật: ${savedReport.reportId}');
+          print('Phòng: ${savedReport.problemRoom}');
+          print('Loại lỗi: ${savedReport.problemType.label}');
+          print('Thời gian: ${savedReport.reportDate}');
+        }
+
+        if (mounted) {
+          // 3. Tắt loading dialog
+          Navigator.of(context, rootNavigator: true).pop();
+          // 4. Đóng màn hình và trả object THẬT về cho MainEmployeeScreen
+          // MainEmployeeScreen dùng object này để insert vào listReport -> UI tự cập nhật
+          context.pop(savedReport);
+        }
+      } catch (e) {
+        // Nếu lỗi (mất mạng, RLS từ chối...) -> tắt loading, hiện snackbar đỏ
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gửi báo cáo thất bại: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -161,17 +177,14 @@ class CreateReportScreenState extends State<CreateReportScreen> {
                     const SizedBox(height: AppStyles.spaceS),
                     DropdownButtonFormField<ProblemType>(
                       initialValue: _selectedType,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppStyles.radiusL)),
-                        filled: true,
-                        fillColor: AppColors.surfaceWhite,
-                      ),
+                      dropdownColor: AppColors.surfaceWhite,
+                      style: const TextStyle(color: AppColors.textPrimary),
                       items: ProblemType.values.map((type) => DropdownMenuItem(
                         value: type,
                         child: Row(children: [
                           Icon(type.icon, color: type.color),
                           const SizedBox(width: 10),
-                          Text(type.label),
+                          Text(type.label, style: const TextStyle(color: AppColors.textPrimary)),
                         ]),
                       )).toList(),
                       onChanged: (value) => setState(() => _selectedType = value!),
@@ -226,7 +239,7 @@ class CreateReportScreenState extends State<CreateReportScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade400),
+                          border: Border.all(color: Theme.of(context).colorScheme.outline),
                           borderRadius: AppStyles.brL,
                           color: AppColors.surfaceWhite,
                         ),
@@ -273,9 +286,9 @@ class CreateReportScreenState extends State<CreateReportScreen> {
                           Positioned(
                             top: 5, right: 5,
                             child: CircleAvatar(
-                              backgroundColor: Colors.black54,
+                              backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                               child: IconButton(
-                                icon: const Icon(Icons.close, color: Colors.white),
+                                icon: Icon(Icons.close, color: Theme.of(context).scaffoldBackgroundColor),
                                 onPressed: () => setState(() => _selectedImage = null),
                               ),
                             ),
@@ -294,9 +307,9 @@ class CreateReportScreenState extends State<CreateReportScreen> {
                           backgroundColor: AppColors.brandDark,
                           shape: RoundedRectangleBorder(borderRadius: AppStyles.brL),
                         ),
-                        child: const Text(
+                        child: Text(
                           'GỬI BÁO CÁO',
-                          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+                          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
                         ),
                       ),
                     ),

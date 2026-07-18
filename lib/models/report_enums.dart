@@ -12,9 +12,9 @@ import 'package:flutter/material.dart';
 
 enum ProblemType {
   network('Lỗi mạng', Icons.wifi, Colors.green),
-  hardware('Lỗi phần cứng', Icons.memory, Colors.grey),
+  hardware('Lỗi phần cứng', Icons.memory, Colors.blueGrey),
   software('Lỗi phần mềm', Icons.settings_suggest, Colors.blue),
-  furniture('Hư cơ sở vật chất', Icons.construction, Colors.black);
+  furniture('Hư cơ sở vật chất', Icons.construction, Colors.brown);
 
   final String label;
   final IconData icon;
@@ -43,6 +43,10 @@ enum Status {
   final String label;
 
   const Status(this.label, this.color);
+
+  Color get textColor {
+    return color.computeLuminance() > 0.5 ? Colors.black : Colors.white;
+  }
 
   // Getter giúp kiểm tra trạng thái nhanh gọn — thay vì viết dài:
   // if (report.status == Status.pending) → if (report.status.isPending)

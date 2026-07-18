@@ -1,22 +1,65 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:resolvex_mobile_app/models/report_model.dart';
+import 'package:resolvex_mobile_app/models/employee_model.dart';
+import 'package:resolvex_mobile_app/providers/report_provider.dart';
 import 'package:resolvex_mobile_app/routers/app_router.dart';
-import 'package:resolvex_mobile_app/utils/app_styles.dart';
+import 'package:resolvex_mobile_app/core/theme/theme.dart';
+import 'package:resolvex_mobile_app/services/auth_service.dart';
 import 'package:resolvex_mobile_app/widgets/rx_container.dart';
 import 'package:resolvex_mobile_app/widgets/rx_customscrollview.dart';
 
-class HomeTab extends StatelessWidget {
-  final List<ReportModel> listReport;
+// =============================================================================
+// HOME TAB — Trang chủ, hiện tổng quan và 6 báo cáo gần nhất
+//
+// Thay đổi kiến trúc (Prop Drilling → Provider):
+//   Trước: nhận listReport, onRefresh, onLoadMore, hasMore, isLoadingMore
+//          qua constructor (5 props, 3 props không dùng đến).
+//   Sau:   không nhận prop nào — tự đọc dữ liệu từ ReportProvider.
+//
+//   context.watch<ReportProvider>(): đăng ký lắng nghe Provider.
+//   Khi ReportProvider gọi notifyListeners(), CHỈ Tab này rebuild (nếu đang hiển thị),
+//   thay vì toàn bộ 4 Tab như trước.
+// =============================================================================
 
-  const HomeTab({super.key, required this.listReport});
+// [FIX 1] Không còn props nào — HomeTab không nhận tham số nào qua constructor
+class HomeTab extends StatefulWidget {
+  const HomeTab({super.key});
+
+  @override
+  State<HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<HomeTab> {
+  EmployeeModel? _currentEmployee;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEmployee();
+  }
+
+  Future<void> _fetchEmployee() async {
+    final employee = await AuthService().getCurrentEmployee();
+    if (mounted) {
+      setState(() {
+        _currentEmployee = employee;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final int pendingCount    = listReport.where((r) => r.status.isPending).length;
-    final int processingCount = listReport.where((r) => r.status.isProcessing).length;
-    final int resolvedCount   = listReport.where((r) => r.status.isResolved).length;
-    final List<ReportModel> recentReports = listReport.take(6).toList();
+    // context.watch<ReportProvider>(): lắng nghe toàn bộ ReportProvider.
+    // Mỗi khi Provider gọi notifyListeners() (dữ liệu mới, loading đổi,...),
+    // widget này sẽ tự rebuild để hiển thị dữ liệu mới nhất.
+    final reportProvider = context.watch<ReportProvider>();
+
+    final int pendingCount    = reportProvider.listReport.where((r) => r.status.isPending).length;
+    final int processingCount = reportProvider.listReport.where((r) => r.status.isProcessing).length;
+    final int resolvedCount   = reportProvider.listReport.where((r) => r.status.isResolved).length;
+    final List<ReportModel> recentReports = reportProvider.listReport.take(6).toList();
 
     return RXCustomScrollView(
       expandedHeight: 120,
@@ -32,15 +75,32 @@ class HomeTab extends StatelessWidget {
                   CircleAvatar(
                     backgroundColor: AppColors.brandDark,
                     radius: 28,
-                    child: const Icon(Icons.person, color: Colors.white, size: 28),
+                    child: const Icon(Icons.person, color: Colors.black, size: 28),
                   ),
                   const SizedBox(width: 15),
-                  const Column(
+                  Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Xin chào,', style: TextStyle(fontSize: 14, color: Colors.black54)),
-                      Text('Trọng Nhân', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                      Text(
+                        'Xin chào,',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColorsDark.textSecondary
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                      Text(
+                        _currentEmployee?.fullName ?? 'Đang tải...', 
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColorsDark.textPrimary
+                              : AppColors.textPrimary,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -68,7 +128,16 @@ class HomeTab extends StatelessWidget {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.only(left: AppStyles.spaceL, top: AppStyles.spaceS, bottom: AppStyles.spaceS),
-            child: Text('Báo cáo gần đây (${recentReports.length})', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            child: Text(
+              'Báo cáo gần đây (${recentReports.length})', 
+              style: TextStyle(
+                fontSize: 16, 
+                fontWeight: FontWeight.bold, 
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColorsDark.textPrimary
+                    : AppColors.textPrimary,
+              ),
+            ),
           ),
         ),
         if (recentReports.isEmpty)
@@ -92,7 +161,15 @@ class HomeTab extends StatelessWidget {
               delegate: SliverChildBuilderDelegate(
                 (context, index) => RXContainer(
                   reportModel: recentReports[index],
-                  onTap: () => context.pushNamed(RouteNames.detailReport, extra: recentReports[index]),
+                  onTap: () async {
+                    // Lưu provider trước khi await — tránh use_build_context_synchronously
+                    final provider = context.read<ReportProvider>();
+                    await context.pushNamed(RouteNames.detailReport, extra: recentReports[index]);
+                    // Làm mới dữ liệu sau khi quay lại từ màn hình chi tiết.
+                    if (mounted) {
+                      provider.loadReports(reset: true);
+                    }
+                  },
                 ),
                 childCount: recentReports.length,
               ),
@@ -106,7 +183,7 @@ class HomeTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppStyles.spaceM),
       decoration: BoxDecoration(
-        color: AppColors.surfaceWhite,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: AppStyles.brM,
         boxShadow: AppStyles.shadowLight,
         border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
@@ -122,7 +199,7 @@ class HomeTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppStyles.spaceS),
-          Text(title, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          Text(title, style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium?.color)),
         ],
       ),
     );

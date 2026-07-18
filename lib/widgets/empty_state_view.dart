@@ -14,13 +14,13 @@ import 'package:flutter/material.dart';
 /// ```
 class EmptyStateView extends StatelessWidget {
   final IconData icon;
-  final Color iconColor;
+  final Color? iconColor;
   final String message;
 
   const EmptyStateView({
     super.key,
     required this.icon,
-    this.iconColor = Colors.grey,
+    this.iconColor,
     required this.message,
   });
 
@@ -32,14 +32,14 @@ class EmptyStateView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 50, color: iconColor),
+            Icon(icon, size: 64, color: iconColor ?? Theme.of(context).iconTheme.color),
             const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
                 message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16, color: Colors.grey),
+                style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyMedium?.color),
               ),
             ),
           ],

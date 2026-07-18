@@ -34,6 +34,47 @@ class ReportModel extends Equatable {
     required this.reportDate,
   });
 
+  // ---------------------------------------------------------------------------
+  // GETTER: Kiểm tra quyền sửa/xóa
+  // ---------------------------------------------------------------------------
+
+  /// Kiểm tra nhân viên có được sửa/xóa báo cáo này không.
+  ///
+  /// Điều kiện: báo cáo phải:
+  ///   1. Còn trong thời gian 10 phút kể từ lúc tạo
+  ///   2. Đang ở trạng thái 'pending' (chưa có ai đụng vào)
+  ///
+  /// Dùng 2 lụa chọn bảo vệ:
+  ///   - Flutter side: ẩn nút Sửa/Xóa trên UI (UX tốt)
+  ///   - Supabase RLS:  chặn thật sự ở database (bảo mật thật sự)
+  bool get isEditableByEmployee {
+    // Thời gian giới hạn: 10 phút = 600 giây
+    const editWindowMinutes = 10;
+
+    // Kiểm tra thời gian: báo cáo phải được tạo trong vòng 10 phút gần đây
+    final bool isWithinWindow = DateTime.now().difference(reportDate).inMinutes < editWindowMinutes;
+
+    // Kiểm tra trạng thái: chỉ được sửa khi còn 'pending'
+    // Nếu Admin đã chuyển sang 'processing' hay 'resolved' thì không cho sửa nữa
+    final bool isStillPending = status.isPending;
+
+    return isWithinWindow && isStillPending;
+  }
+
+  /// Kiểm tra thời gian còn lại để sửa (tính bằng giây).
+  ///
+  /// Dùng để hiển thị đồng hồ đếm ngược trong UI ("Còn 5:30 để sửa")
+  int get secondsLeftToEdit {
+    const editWindowSeconds = 10 * 60; // 10 phút = 600 giây
+    final elapsedSeconds = DateTime.now().difference(reportDate).inSeconds;
+    final remaining = editWindowSeconds - elapsedSeconds;
+    return remaining < 0 ? 0 : remaining;
+  }
+
+  /// Admin luôn có thể sửa bất kỳ báo cáo nào, không giới hạn thời gian.
+  bool get isEditableByAdmin => true;
+
+
   /// Chuyển đối tượng thành Map để lưu hoặc gửi lên Server
   Map<String, dynamic> toMap() {
     return {
@@ -72,8 +113,9 @@ class ReportModel extends Equatable {
         orElse: () => Status.pending,
       ),
       // tryParse giúp app không crash nếu chuỗi ngày bị sai định dạng
+      // .toLocal() để chuyển đổi giờ UTC từ Supabase sang giờ địa phương của thiết bị
       reportDate:
-          DateTime.tryParse(map['report_date'] as String? ?? '') ?? DateTime.now(),
+          (DateTime.tryParse(map['report_date'] as String? ?? '') ?? DateTime.now()).toLocal(),
     );
   }
 

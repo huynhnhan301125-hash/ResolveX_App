@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:resolvex_mobile_app/utils/app_styles.dart';
+import 'package:resolvex_mobile_app/core/theme/theme.dart';
 
 class RXTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -43,32 +43,19 @@ class RXTextField extends StatelessWidget {
       keyboardType: keyboardType,
       maxLines: isPassword ? 1 : maxLines,
       minLines: minLines,
+      style: const TextStyle(color: AppColors.textPrimary), // Chữ đen trên nền trắng
       decoration: InputDecoration(
         labelText: labelText,
+        labelStyle: const TextStyle(color: AppColors.textSecondary),
         prefixIcon: prefixIcon,
         suffixIcon: suffixIcon,
-        filled: true,
-        fillColor: AppColors.surfaceWhite,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppStyles.spaceL,
-          vertical: AppStyles.spaceL,
-        ),
-        // Dùng AppStyles.radiusL thay vì magic number 15 — lặp lại 4 lần
-        enabledBorder: OutlineInputBorder(
-          borderRadius: AppStyles.brL,
-          borderSide: BorderSide(width: 1.5, color: AppColors.brandDark),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: AppStyles.brL,
-          borderSide: const BorderSide(width: 2, color: Colors.black),
-        ),
         errorBorder: OutlineInputBorder(
           borderRadius: AppStyles.brL,
-          borderSide: const BorderSide(width: 1, color: Colors.red),
+          borderSide: const BorderSide(width: 1.5, color: AppColors.danger),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: AppStyles.brL,
-          borderSide: const BorderSide(width: 2, color: Colors.red),
+          borderSide: const BorderSide(width: 2, color: AppColors.danger),
         ),
       ),
     );

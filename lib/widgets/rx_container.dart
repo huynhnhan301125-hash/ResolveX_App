@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:resolvex_mobile_app/models/report_model.dart';
-import 'package:resolvex_mobile_app/utils/app_styles.dart';
+import 'package:resolvex_mobile_app/core/theme/theme.dart';
 import 'package:intl/intl.dart';
 
 class RXContainer extends StatelessWidget {
@@ -97,7 +97,7 @@ class RXContainer extends StatelessWidget {
                       ),
                       child: Text(
                         reportModel.status.label,
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: reportModel.status.textColor),
                       ),
                     ),
                     Icon(
@@ -107,7 +107,7 @@ class RXContainer extends StatelessWidget {
                     ),
                     Text(
                       DateFormat('HH:mm - dd/MM').format(reportModel.reportDate),
-                      style: const TextStyle(fontSize: 10, color: Colors.grey),
+                      style: TextStyle(fontSize: 10, color: Theme.of(context).textTheme.bodyMedium?.color),
                     ),
                   ],
                 ),

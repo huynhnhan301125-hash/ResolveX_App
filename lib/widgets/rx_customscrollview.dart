@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:resolvex_mobile_app/utils/app_styles.dart';
 
 /// [RXCustomScrollView] là widget bọc CustomScrollView với SliverAppBar chuẩn.
 /// Tất cả các Tab màn hình chính và CreateReportScreen đều dùng widget này
@@ -32,8 +31,8 @@ class RXCustomScrollView extends StatelessWidget {
           pinned: true,   // Giữ thanh tiêu đề ở đỉnh khi cuộn
           floating: true, // Hiện lại nhanh khi kéo xuống
           snap: true,     // Đi kèm floating để hiện mượt hơn
-          // Dùng AppColors.brandPrimary thay vì Colors.yellow.shade600 hardcode
-          backgroundColor: AppColors.brandPrimary,
+          backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+          foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
           ),

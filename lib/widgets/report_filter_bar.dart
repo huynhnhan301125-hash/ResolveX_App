@@ -25,25 +25,26 @@ class ReportFilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
+      color: Theme.of(context).scaffoldBackgroundColor,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       child: Row(
         children: [
           // 1. Dropdown Sắp xếp thời gian
           Expanded(
             child: _buildDropdownContainer(
+              context,
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<bool>(
                   value: isNewestFirst,
                   isExpanded: true,
                   isDense: true, // Làm gọn kích thước dropdown
                   padding: EdgeInsets.zero, // Xóa padding mặc định của Dropdown để tiết kiệm không gian
-                  icon: const Icon(Icons.arrow_drop_down, color: Colors.grey, size: 18),
-                  style: const TextStyle(fontSize: 12, color: Colors.black87),
+                  icon: Icon(Icons.arrow_drop_down, color: Theme.of(context).iconTheme.color, size: 18),
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium?.color),
                   onChanged: (value) {
                     if (value != null) onSortChanged(value);
                   },
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: true,
                       child: Row(
@@ -63,7 +64,7 @@ class ReportFilterBar extends StatelessWidget {
                       value: false,
                       child: Row(
                         children: [
-                          Icon(Icons.arrow_upward, size: 12, color: Colors.grey),
+                          Icon(Icons.arrow_upward, size: 12, color: Theme.of(context).iconTheme.color),
                           SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -84,21 +85,22 @@ class ReportFilterBar extends StatelessWidget {
           // 2. Dropdown Lọc Loại Sự Cố
           Expanded(
             child: _buildDropdownContainer(
+              context,
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<ProblemType?>(
                   value: selectedType,
                   isExpanded: true,
                   isDense: true, // Làm gọn kích thước dropdown
                   padding: EdgeInsets.zero, // Xóa padding mặc định
-                  icon: const Icon(Icons.arrow_drop_down, color: Colors.grey, size: 18),
-                  style: const TextStyle(fontSize: 12, color: Colors.black87),
+                  icon: Icon(Icons.arrow_drop_down, color: Theme.of(context).iconTheme.color?.withValues(alpha: 0.5), size: 18),
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium?.color),
                   onChanged: onTypeChanged,
                   items: [
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: null,
                       child: Row(
                         children: [
-                          Icon(Icons.category_outlined, size: 12, color: Colors.grey),
+                          Icon(Icons.category_outlined, size: 12, color: Theme.of(context).iconTheme.color),
                           SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -136,21 +138,22 @@ class ReportFilterBar extends StatelessWidget {
           // 3. Dropdown Lọc Mức Độ Ưu Tiên
           Expanded(
             child: _buildDropdownContainer(
+              context,
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<Level?>(
                   value: selectedLevel,
                   isExpanded: true,
                   isDense: true, // Làm gọn kích thước dropdown
                   padding: EdgeInsets.zero, // Xóa padding mặc định
-                  icon: const Icon(Icons.arrow_drop_down, color: Colors.grey, size: 18),
-                  style: const TextStyle(fontSize: 12, color: Colors.black87),
+                  icon: Icon(Icons.arrow_drop_down, color: Theme.of(context).iconTheme.color?.withValues(alpha: 0.5), size: 18),
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium?.color),
                   onChanged: onLevelChanged,
                   items: [
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: null,
                       child: Row(
                         children: [
-                          Icon(Icons.priority_high, size: 12, color: Colors.grey),
+                          Icon(Icons.priority_high, size: 12, color: Theme.of(context).iconTheme.color),
                           SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -197,14 +200,15 @@ class ReportFilterBar extends StatelessWidget {
 
   /// Hàm bổ trợ (Helper method) để trang trí cho khung Dropdown.
   /// Giúp đồng bộ giao diện bo góc nhẹ, viền xám nhạt và đổ bóng cực nhẹ.
-  Widget _buildDropdownContainer({required Widget child}) {
+  Widget _buildDropdownContainer(BuildContext context, {required Widget child}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4), // Giảm padding viền để chừa chỗ cho chữ dài
       height: 36,
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200, width: 1.0),
+        border: Border.all(color: isDark ? const Color(0xFF3C3C3C) : Colors.grey.shade200, width: 1.0),
       ),
       child: Center(child: child),
     );

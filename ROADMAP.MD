@@ -26,7 +26,7 @@
     - Chuyển từ Popup sang trang riêng.
     - Đổi nút "Reset" -> "Hủy".
     - Thêm nút "Quay lại" (Back) chuẩn cho tất cả trang.
-- [ ] **Màn hình Profile/Settings:** Thông tin cá nhân & Đăng xuất.
+- [X] **Màn hình Profile/Settings:** Thông tin cá nhân & Đăng xuất.
 
 ### Giai đoạn 2: Database & Backend Setup
 - [ ] Thiết kế Schema trên Supabase (Tables: Users, Tickets, Devices).

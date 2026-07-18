@@ -1,49 +1,28 @@
+// =============================================================================
+// APP STYLES — Design Tokens về bố cục (Layout Tokens)
+//
+// [LÝ DO TÁCH FILE]
+// File này tách ra từ app_styles.dart cũ, chỉ chứa các hằng số bố cục:
+//   - BorderRadius (bo góc)
+//   - BoxShadow (bóng đổ)
+//   - Spacing (khoảng cách)
+//
+// Màu sắc KHÔNG nằm ở đây → xem app_colors.dart
+// Cấu hình ThemeData KHÔNG nằm ở đây → xem app_themes.dart
+//
+// [LÝ DO DÙNG abstract class]
+// abstract class ngăn hoàn toàn việc tạo đối tượng AppStyles(),
+// vì tất cả giá trị bên trong đều là static const, không cần instance.
+// =============================================================================
+
 import 'package:flutter/material.dart';
 
-// =============================================================================
-// APP COLORS — Bảng màu thương hiệu của ứng dụng
-// Tất cả màu sắc dùng trong app phải lấy từ đây.
-// Khi cần đổi màu thương hiệu, chỉ cần sửa tại file này.
-// =============================================================================
-abstract class AppColors {
-  /// Màu vàng chủ đạo — dùng cho nút chính, AppBar, FAB (yellow.shade600)
-  static const Color brandPrimary = Color(0xFFFDD835);
-
-  /// Màu vàng đậm hơn — dùng cho border TextField, icon active (yellow.shade700)
-  static const Color brandDark = Color(0xFFFBC02D);
-
-  /// Màu nền vàng nhạt — dùng cho Scaffold background (yellow.shade200)
-  static const Color brandBackground = Color(0xFFFFF9C4);
-
-  /// Màu nền trắng — dùng cho Card, TextField, Container
-  static const Color surfaceWhite = Colors.white;
-
-  /// Màu chữ chính
-  static const Color textPrimary = Color(0xDD000000); // Colors.black87
-
-  /// Màu chữ phụ / nhãn
-  static const Color textSecondary = Color(0x8A000000); // Colors.black54
-
-  /// Màu xám nhạt cho viền
-  static const Color borderLight = Color(0xFFEEEEEE); // Colors.grey.shade200
-
-  /// Màu xám nền nhẹ
-  static const Color surfaceGrey = Color(0xFFFAFAFA); // Colors.grey.shade50
-
-  /// Màu đỏ — dùng cho nút đăng xuất, lỗi
-  static const Color danger = Color(0xFFE53935); // Colors.red.shade600
-}
-
-// =============================================================================
-// APP STYLES — Hằng số thiết kế (Design Tokens)
-// Tập trung: BorderRadius, BoxShadow, Padding chuẩn.
-// =============================================================================
 abstract class AppStyles {
   // ── Border Radius ───────────────────────────────────────────────────────────
-  /// Bo góc nhỏ — dùng cho badge trạng thái, chip mức độ trong rx_container
+  /// Bo góc nhỏ nhất — dùng cho badge trạng thái, chip mức độ
   static const double radiusXS = 4.0;
 
-  /// Bo góc vừa nhỏ — dùng cho dropdown container trong filter bar
+  /// Bo góc nhỏ — dùng cho dropdown container trong filter bar
   static const double radiusS = 8.0;
 
   /// Bo góc chuẩn — dùng cho Card, Button, Setting item, TextField
@@ -58,7 +37,7 @@ abstract class AppStyles {
   /// Bo góc tròn — dùng cho OTP Pin box
   static const double radiusXXL = 20.0;
 
-  // Tiện lợi dùng trực tiếp cho BorderRadius.circular
+  // Tiện lợi dùng trực tiếp cho tham số borderRadius (không cần gọi circular())
   static const BorderRadius brXS  = BorderRadius.all(Radius.circular(radiusXS));
   static const BorderRadius brS   = BorderRadius.all(Radius.circular(radiusS));
   static const BorderRadius brM   = BorderRadius.all(Radius.circular(radiusM));
@@ -95,11 +74,12 @@ abstract class AppStyles {
   ];
 
   // ── Spacing chuẩn ───────────────────────────────────────────────────────────
-  static const double spaceXS = 4.0;
-  static const double spaceS  = 8.0;
-  static const double spaceM  = 12.0;
-  static const double spaceL  = 16.0;
-  static const double spaceXL = 20.0;
+  // Dùng thống nhất cho padding, margin, SizedBox gap trên toàn app.
+  static const double spaceXS  = 4.0;
+  static const double spaceS   = 8.0;
+  static const double spaceM   = 12.0;
+  static const double spaceL   = 16.0;
+  static const double spaceXL  = 20.0;
   static const double spaceXXL = 24.0;
   static const double spaceXXXL = 30.0;
 }
