@@ -20,6 +20,14 @@ DROP POLICY IF EXISTS "employee_create_own_report" ON reports;
 DROP POLICY IF EXISTS "employee_read_all_reports" ON reports;
 DROP POLICY IF EXISTS "admin_read_all_reports" ON reports;
 
+-- Xóa các policy đang có trên Supabase để đồng bộ với tên mới
+DROP POLICY IF EXISTS "admin: delete report" ON reports;
+DROP POLICY IF EXISTS "admin: read all reports" ON reports;
+DROP POLICY IF EXISTS "admin: update report status" ON reports;
+DROP POLICY IF EXISTS "employee: create own report" ON reports;
+DROP POLICY IF EXISTS "employee: read all reports" ON reports;
+DROP POLICY IF EXISTS "employee: update own report" ON reports;
+
 -- ---------------------------------------------------------------------------
 -- POLICY: Nhân viên TẠO báo cáo mới
 -- ---------------------------------------------------------------------------
@@ -28,7 +36,7 @@ CREATE POLICY "employee_create_own_report"
 ON reports
 FOR INSERT
 WITH CHECK (
-  auth.uid()::TEXT = emp_id
+  auth.uid() = emp_id
 );
 
 -- ---------------------------------------------------------------------------
@@ -53,7 +61,7 @@ ON reports
 FOR UPDATE
 USING (
   -- 1. Báo cáo phải là của người đang đăng nhập
-  auth.uid()::TEXT = emp_id
+  auth.uid() = emp_id
 
   -- 2. Chỉ cập nhật được khi báo cáo còn ở trạng thái 'pending'
   AND status = 'pending'
@@ -65,7 +73,7 @@ USING (
 WITH CHECK (
   -- Điều kiện cho dữ liệu MỚI: nhân viên không được đổi emp_id hay status
   -- emp_id phải giữ nguyên (không chuyển báo cáo sang người khác)
-  auth.uid()::TEXT = emp_id
+  auth.uid() = emp_id
 
   -- Status không được thay đổi (chỉ Admin mới đổi được)
   -- NEW.status phải = OLD.status = 'pending'
@@ -81,7 +89,7 @@ ON reports
 FOR DELETE
 USING (
   -- Logic giống UPDATE: phải là của mình + pending + trong 10 phút
-  auth.uid()::TEXT = emp_id
+  auth.uid() = emp_id
   AND status = 'pending'
   AND report_date > NOW() - INTERVAL '10 minutes'
 );

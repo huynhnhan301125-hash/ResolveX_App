@@ -15,6 +15,11 @@ DROP POLICY IF EXISTS "employee_read_own_profile" ON employees;
 DROP POLICY IF EXISTS "admin_read_all_employees" ON employees;
 DROP POLICY IF EXISTS "admin_update_employee" ON employees;
 
+-- Xóa các policy đang có trên Supabase để đồng bộ với tên mới
+DROP POLICY IF EXISTS "admin: read all employees" ON employees;
+DROP POLICY IF EXISTS "admin: update employee" ON employees;
+DROP POLICY IF EXISTS "employee: read own profile" ON employees;
+
 -- ---------------------------------------------------------------------------
 -- POLICY: Nhân viên ĐỌC thông tin của chính mình
 -- ---------------------------------------------------------------------------
