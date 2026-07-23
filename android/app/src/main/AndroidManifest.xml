@@ -1,4 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- QUYỀN TRUY CẬP INTERNET: Bắt buộc để Supabase & API hoạt động trên bản APK Release -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    
+    <!-- QUYỀN CAMERA & BỘ NHỚ: Dùng cho chụp ảnh báo cáo & import CSV -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+
     <application
         android:label="resolvex_mobile_app"
         android:name="${applicationName}"
