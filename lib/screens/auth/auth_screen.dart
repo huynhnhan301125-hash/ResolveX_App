@@ -148,23 +148,33 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     const SizedBox(height: AppStyles.spaceXXXL),
 
-                    // Builder — Widget tạo ra một BuildContext con (innerContext) riêng biệt.
-                    // Mục đích: context.watch<T>() gọi từ innerContext chỉ ràng buộc rebuild phần widget
-                    // bên trong Builder này, không làm chạy lại build() của toàn màn hình.
-                    // Cấu trúc:
-                    //   builder : (innerContext) — callback nhận BuildContext con, dùng để gọi watch/read
-                    Builder(
-                      builder: (innerContext) {
-                        // context.watch<T>() — đăng ký lắng nghe T, rebuild widget này mỗi khi T thay đổi.
-                        // Dùng innerContext (context con của Builder) thay vì context của màn hình
-                        // để giới hạn phạm vi rebuild chỉ trong widget Builder này.
-                        final isLoading = innerContext.watch<AuthProvider>().isLoading;
-
-                        return SizedBox(
-                          width: double.infinity,
-                          height: 55,
-                          child: ElevatedButton(
-                            // isLoading = true → disable nút (null) để tránh bấm nhiều lần trong khi đang xử lý
+                    // -------------------------------------------------------------------------
+                    // [FIX #6] context.select() thay thế Builder + context.watch()
+                    //
+                    // VẤN ĐỀ CŨ (Builder + context.watch):
+                    //   Builder tạo ra một BuildContext con (innerContext) chỉ để
+                    //   giới hạn phạm vi rebuild. context.watch bên trong đó vẫn
+                    //   rebuild khi BẤT KỲ thuộc tính nào của AuthProvider thay đổi
+                    //   (kể cả errorMessage, dù nút không cần).
+                    //
+                    // GIẢI PHÁP (context.select):
+                    //   context.select<T, R>() đăng ký lắng nghe Provider T,
+                    //   nhưng CHỈ trigger rebuild khi giá trị R thực sự thay đổi.
+                    //   Nút đăng nhập chỉ quan tâm isLoading (bool), nên chỉ rebuild
+                    //   khi isLoading đổi từ false → true hoặc ngược lại.
+                    //   Không cần Builder bọc ngoài — code ngắn gọn hơn.
+                    // -------------------------------------------------------------------------
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: Builder(
+                        builder: (ctx) {
+                          // context.select: chỉ lấy isLoading, chỉ rebuild khi isLoading đổi
+                          final isLoading = ctx.select<AuthProvider, bool>(
+                            (auth) => auth.isLoading,
+                          );
+                          return ElevatedButton(
+                            // isLoading = true → disable nút (null) để tránh bấm nhiều lần
                             onPressed: isLoading ? null : _handleLogin,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.brandDark,
@@ -179,9 +189,9 @@ class _AuthScreenState extends State<AuthScreen> {
                                       fontSize: 18,
                                     ),
                                   ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),

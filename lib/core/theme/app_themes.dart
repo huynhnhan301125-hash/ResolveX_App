@@ -99,10 +99,31 @@ abstract class AppThemes {
         borderRadius: BorderRadius.circular(AppStyles.radiusL),
         borderSide: const BorderSide(color: AppColors.brandDark, width: 2.0),
       ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppStyles.radiusL),
+        borderSide: const BorderSide(width: 1.5, color: AppColors.danger),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppStyles.radiusL),
+        borderSide: const BorderSide(width: 2.0, color: AppColors.danger),
+      ),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: AppStyles.spaceL,
         vertical: AppStyles.spaceL,
       ),
+      // [FIX #3 — Label color light mode]
+      // Màu label khi đứng YÊN bên trong TextField (chưa focus).
+      // Dùng black54 (textSecondary) trên nền trắng → đủ tương phản, không quá nổi.
+      labelStyle: const TextStyle(color: AppColors.textSecondary),
+      // Màu label khi BAY LÊN đè lên border (sau khi focus hoặc có text).
+      // Dùng brandDark (vàng đậm) để nổi bật trên nền vàng nhạt của Scaffold.
+      floatingLabelStyle: const TextStyle(
+        color: AppColors.brandDark,
+        fontWeight: FontWeight.w600,
+      ),
+      // Fix icon color: buộc icon trong TextField dùng màu đen mờ thay vì màu mặc định của theme
+      prefixIconColor: AppColors.textSecondary,
+      suffixIconColor: AppColors.textSecondary,
     ),
   );
 
@@ -173,10 +194,35 @@ abstract class AppThemes {
         borderRadius: BorderRadius.circular(AppStyles.radiusL),
         borderSide: const BorderSide(color: AppColors.brandDark, width: 2.0),
       ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppStyles.radiusL),
+        borderSide: const BorderSide(width: 1.5, color: AppColorsDark.danger),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppStyles.radiusL),
+        borderSide: const BorderSide(width: 2.0, color: AppColorsDark.danger),
+      ),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: AppStyles.spaceL,
         vertical: AppStyles.spaceL,
       ),
+      // [FIX #3 — Label color dark mode]
+      // Màu label khi đứng YÊN bên trong TextField (chưa focus).
+      // Nền TextField là trắng (surfaceWhite) nên dùng black54 vẫn đọc được.
+      labelStyle: const TextStyle(color: AppColors.textSecondary),
+      // Màu label khi BAY LÊN đè lên border (sau khi focus hoặc có text).
+      // Lúc này label KHÔNG CÒN nằm trên nền trắng của TextField nữa —
+      // nó đứng trên nền Scaffold tối (#121212). Vì vậy KHÔNG được dùng màu
+      // đen (textSecondary của light mode) vì sẽ vô hình trên nền tối.
+      // → Dùng brandPrimary (vàng thương hiệu) để nổi bật trên mọi nền tối.
+      floatingLabelStyle: const TextStyle(
+        color: AppColorsDark.brandPrimary,
+        fontWeight: FontWeight.w600,
+      ),
+      // Fix icon color: trong dark mode, icon mặc định là màu trắng. 
+      // Do nền TextField là trắng nên phải ép màu icon thành đen mờ để nhìn thấy.
+      prefixIconColor: AppColors.textSecondary, // textSecondary (light mode) = black54
+      suffixIconColor: AppColors.textSecondary,
     ),
 
     // BottomAppBar dark

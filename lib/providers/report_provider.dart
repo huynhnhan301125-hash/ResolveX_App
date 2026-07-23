@@ -110,4 +110,19 @@ class ReportProvider extends ChangeNotifier {
     _listReport.insert(0, newReport);
     notifyListeners(); // Thông báo tất cả Tab đang lắng nghe cập nhật lại
   }
+
+  /// Xóa báo cáo khỏi danh sách cục bộ (sau khi xóa thành công trên server)
+  void removeReportLocally(String reportId) {
+    _listReport.removeWhere((r) => r.reportId == reportId);
+    notifyListeners();
+  }
+
+  /// Cập nhật thông tin báo cáo trong danh sách cục bộ (sau khi sửa thành công)
+  void updateReportLocally(ReportModel updatedReport) {
+    final index = _listReport.indexWhere((r) => r.reportId == updatedReport.reportId);
+    if (index != -1) {
+      _listReport[index] = updatedReport;
+      notifyListeners();
+    }
+  }
 }

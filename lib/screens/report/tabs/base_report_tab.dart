@@ -20,13 +20,36 @@ import 'package:resolvex_mobile_app/widgets/report_filter_bar.dart';
 //   và icon rỗng. Thay vì viết lặp code ở 2 file, ta gom toàn bộ vào đây
 //   và để các Tab con chỉ cần truyền 4-5 tham số cấu hình.
 //
-// Giải quyết lỗi hiệu năng (Tính toán nặng trong build()):
-//   Trước: baseList và filteredList được tính lại trong build() — chạy 60 lần/giây
-//          khi người dùng cuộn, gây drop FPS và GC pressure cao.
+// [FIX #5 — context.select() thay thế didChangeDependencies + cache thủ công]
 //
-//   Sau:   Sử dụng didChangeDependencies() để tính toán khi Provider thay đổi,
-//          và _recomputeFiltered() khi bộ lọc thay đổi.
-//          build() chỉ đọc cache — O(1), không tạo List mới.
+// VẤN ĐỀ CŨ (didChangeDependencies + cache thủ công):
+//   - Gọi context.watch() trong didChangeDependencies() là SAI QUY ĐỊNH của
+//     thư viện Provider — context.watch() được thiết kế chỉ dùng trong build().
+//   - Gọi thêm setState(() {}) trong didChangeDependencies() là ANTI-PATTERN:
+//     Flutter đã tự động lên lịch gọi build() sau didChangeDependencies(),
+//     gọi thêm setState() là "bấm F5 hai lần liên tiếp", tốn CPU và tiềm ẩn
+//     nguy cơ Infinite Rebuild Loop (vòng lặp vô tận) nếu không cẩn thận.
+//   - Cần 2 biến cache (_cachedBaseList, _cachedFilteredList) và 2 hàm
+//     tính toán thủ công (_recompute, _recomputeFiltered) rất cồng kềnh.
+//
+// GIẢI PHÁP MỚI (context.select):
+//   context.select<T, R>((provider) => giaTri) hoạt động như sau:
+//   1. Đăng ký lắng nghe Provider T.
+//   2. Mỗi khi Provider gọi notifyListeners(), Flutter lấy giá trị mới
+//      bằng hàm selector và SO SÁNH với giá trị cũ (dùng ==).
+//   3. Nếu giá trị KHÔNG đổi → bỏ qua, KHÔNG rebuild widget.
+//   4. Nếu giá trị CÓ ĐỔI → cho phép rebuild.
+//
+//   → CHỈ trigger rebuild khi đúng giá trị đang chọn (listReport / isLoadingMore)
+//     thay đổi, bỏ qua mọi thay đổi khác của Provider (ví dụ: isLoading không
+//     làm danh sách vẽ lại). Hoàn toàn tương đương hiệu năng với didChangeDependencies.
+//
+//   → Việc tính toán baseList và filteredList trong build() là chấp nhận được:
+//     .where().toList() trên vài chục đến vài trăm phần tử chỉ mất vài microsecond,
+//     không phải "tính toán nặng" như AI hay mã hóa. Build() cũng không chạy
+//     60 lần/giây một cách tự do — Flutter chỉ gọi lại khi có thay đổi thực sự.
+//
+//   → Xoá hoàn toàn 2 biến cache và 2 hàm thủ công — code gọn hơn 40 dòng.
 // =============================================================================
 
 /// Widget nền dùng chung. Được khởi tạo bởi [ReportListTab] và [ReportHistoryTab].
@@ -62,92 +85,85 @@ class BaseReportTab extends StatefulWidget {
 
 class _BaseReportTabState extends State<BaseReportTab> {
   // ---------------------------------------------------------------------------
-  // UI STATE — Bộ lọc do người dùng chọn (không lưu trong Provider vì đây là
-  // trạng thái giao diện thuần tuý, không phải dữ liệu nghiệp vụ)
+  // UI STATE — Bộ lọc do người dùng chọn
+  //
+  // Đây là trạng thái giao diện thuần tuý (không phải dữ liệu nghiệp vụ),
+  // nên lưu trong local State thay vì Provider.
+  // Khi người dùng đổi bộ lọc → setState() → build() chạy lại → tự tính lại
+  // danh sách đã lọc từ sourceList đã có sẵn (không cần query API lại).
   // ---------------------------------------------------------------------------
   ProblemType? _selectedType;
   Level? _selectedLevel;
   bool _isNewestFirst = true;
 
-  // ---------------------------------------------------------------------------
-  // CACHE — Kết quả tính toán được lưu tại đây để build() chỉ cần đọc, không tính
-  //
-  // _cachedBaseList:     Danh sách đã lọc theo status (resolved hoặc chưa resolved).
-  //                      Chỉ cập nhật khi Provider đẩy dữ liệu mới (didChangeDependencies).
-  // _cachedFilteredList: Danh sách sau khi áp dụng thêm bộ lọc type/level/sort.
-  //                      Cập nhật khi Provider đẩy data mới HOẶC người dùng đổi bộ lọc.
-  // ---------------------------------------------------------------------------
-  List<ReportModel> _cachedBaseList = [];
-  List<ReportModel> _cachedFilteredList = [];
+  // [FIX #5] Đã XÓA toàn bộ:
+  //   - _cachedBaseList    : List<ReportModel>
+  //   - _cachedFilteredList: List<ReportModel>
+  //   - didChangeDependencies(): không cần nữa
+  //   - _recompute()          : không cần nữa
+  //   - _recomputeFiltered()  : không cần nữa
+  // Lý do: context.select() trong build() xử lý tất cả, sạch hơn và đúng chuẩn hơn.
 
   // ---------------------------------------------------------------------------
-  // LIFECYCLE — Tính toán nặng chỉ xảy ra ở đây, KHÔNG bao giờ trong build()
-  // ---------------------------------------------------------------------------
-
-  /// Được Flutter gọi tự động khi:
-  ///   1. Widget được gắn vào cây lần đầu (sau initState).
-  ///   2. Một InheritedWidget mà widget này phụ thuộc vào thay đổi — cụ thể ở
-  ///      đây là ReportProvider (vì ta gọi context.watch bên trong).
-  ///
-  /// Đây là nơi chính xác để thay thế context.watch trong build() khi ta cần
-  /// phản ứng với dữ liệu mới nhưng không muốn tính toán nằm trong build().
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // context.watch ở đây đăng ký widget lắng nghe Provider.
-    // Khi listReport thay đổi, didChangeDependencies được gọi lại → tính cache mới.
-    final sourceList = context.watch<ReportProvider>().listReport;
-    _recompute(sourceList);
-  }
-
-  /// Tính lại TOÀN BỘ cache từ đầu (baseList + filteredList).
-  /// Gọi khi dữ liệu nguồn từ Provider thay đổi.
-  void _recompute(List<ReportModel> sourceList) {
-    // Lọc theo status dựa vào loại Tab
-    _cachedBaseList = sourceList
-        .where((r) => widget.isResolvedTab
-            ? r.status == Status.resolved    // Tab Lịch sử: chỉ lấy đã xong
-            : r.status != Status.resolved)   // Tab Danh sách: chỉ lấy chưa xong
-        .toList();
-
-    // Áp dụng thêm bộ lọc type/level/sort
-    _cachedFilteredList = applyReportFilters(
-      baseList: _cachedBaseList,
-      selectedType: _selectedType,
-      selectedLevel: _selectedLevel,
-      isNewestFirst: _isNewestFirst,
-    );
-    // Không cần setState() vì didChangeDependencies tự trigger rebuild sau đó
-  }
-
-  /// Tính lại CHỈ filteredList từ _cachedBaseList đã có sẵn.
-  /// Gọi khi người dùng thay đổi bộ lọc — tiết kiệm hơn _recompute() vì
-  /// không chạy lại .where(status) trên toàn bộ sourceList.
-  void _recomputeFiltered() {
-    setState(() {
-      _cachedFilteredList = applyReportFilters(
-        baseList: _cachedBaseList, // dùng lại cache — không chạy .where() lại
-        selectedType: _selectedType,
-        selectedLevel: _selectedLevel,
-        isNewestFirst: _isNewestFirst,
-      );
-    });
-  }
-
-  // ---------------------------------------------------------------------------
-  // BUILD — Chỉ đọc cache và dựng UI, tuyệt đối không tính toán ở đây
+  // BUILD — Tính toán và dựng UI tại đây, an toàn và chuẩn Provider
   // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
-    // Đọc thêm isLoadingMore từ Provider — chỉ để hiện spinner cuối list.
-    // context.watch ở đây không trigger tính toán nặng (đã được xử lý trong
-    // didChangeDependencies ở trên).
-    final isLoadingMore = context.watch<ReportProvider>().isLoadingMore;
+    // -------------------------------------------------------------------------
+    // [FIX #5] context.select() — lấy listReport từ Provider một cách chọn lọc.
+    //
+    // So sánh với context.watch():
+    //   context.watch<ReportProvider>()      → rebuild khi BẤT KỲ thuộc tính
+    //                                          nào trong Provider thay đổi
+    //                                          (kể cả isLoading, isLoadingMore...)
+    //
+    //   context.select<ReportProvider, ...>  → rebuild CHỈ KHI listReport
+    //                                          thực sự thay đổi (provider gọi
+    //                                          notifyListeners() sau khi thêm/xóa
+    //                                          báo cáo). Bỏ qua mọi thay đổi khác.
+    //
+    // Đây là cách dùng ĐÚNG QUY ĐỊNH của thư viện Provider — không cần
+    // "hack" qua didChangeDependencies() nữa.
+    // -------------------------------------------------------------------------
+    final sourceList = context.select<ReportProvider, List<ReportModel>>(
+      (provider) => provider.listReport,
+    );
 
-    // Đọc cache — O(1), không tạo List mới, không tính gì cả
-    final baseList = _cachedBaseList;
-    final filteredList = _cachedFilteredList;
+    // select riêng isLoadingMore để chỉ vẽ lại spinner cuối list
+    // khi trạng thái tải trang tiếp thay đổi, không kéo theo rebuild cả list.
+    final isLoadingMore = context.select<ReportProvider, bool>(
+      (provider) => provider.isLoadingMore,
+    );
+
+    // -------------------------------------------------------------------------
+    // Tính toán danh sách lọc ngay trong build() — KHÔNG cần biến cache.
+    //
+    // Tại sao an toàn để tính ở đây?
+    //   1. context.select() đảm bảo build() chỉ chạy khi listReport thực sự đổi.
+    //   2. Khi người dùng đổi bộ lọc (setState), build() cũng chạy lại → tự
+    //      tính lại filteredList từ sourceList đang có → UI cập nhật đúng ngay.
+    //   3. .where().toList() trên vài chục - vài trăm phần tử ≈ vài microsecond.
+    //      Không phải tính toán nặng, không gây drop frame.
+    // -------------------------------------------------------------------------
+
+    // Bước 1: Lọc theo loại Tab
+    //   Tab Danh sách (isResolvedTab=false): chỉ lấy báo cáo CHƯA giải quyết
+    //   Tab Lịch sử   (isResolvedTab=true) : chỉ lấy báo cáo ĐÃ giải quyết
+    final baseList = sourceList
+        .where((r) => widget.isResolvedTab
+            ? r.status == Status.resolved
+            : r.status != Status.resolved)
+        .toList();
+
+    // Bước 2: Áp dụng thêm bộ lọc type/level/sort mà người dùng đang chọn
+    final filteredList = applyReportFilters(
+      baseList: baseList,
+      selectedType: _selectedType,
+      selectedLevel: _selectedLevel,
+      isNewestFirst: _isNewestFirst,
+    );
+
     final isFilterActive = _selectedType != null || _selectedLevel != null;
 
     return NotificationListener<ScrollNotification>(
@@ -157,12 +173,8 @@ class _BaseReportTabState extends State<BaseReportTab> {
           // context.read: chỉ gọi action, không đăng ký lắng nghe rebuild
           context.read<ReportProvider>().loadReports(reset: false);
         }
-        /*
-         Vì hàm onNotification của Flutter quy định bắt buộc phải trả về một giá trị bool (true hoặc false)
-         Trả về true: Ngăn không cho thông báo cuộn chạy tiếp.
-          Trả về false: Cứ để thông báo cuộn chạy bình thường.
-         */
-        return false; // false = cho phép event tiếp tục lan rộng lên
+        // false = cho phép scroll event tiếp tục lan lên các widget cha
+        return false;
       },
       child: RXCustomScrollView(
         expandedHeight: 120,
@@ -191,19 +203,12 @@ class _BaseReportTabState extends State<BaseReportTab> {
               selectedType: _selectedType,
               selectedLevel: _selectedLevel,
               isNewestFirst: _isNewestFirst,
-              // Cập nhật state và tính lại filteredList ngay — không cần setState riêng
-              onTypeChanged: (type) {
-                _selectedType = type;
-                _recomputeFiltered();
-              },
-              onLevelChanged: (lvl) {
-                _selectedLevel = lvl;
-                _recomputeFiltered();
-              },
-              onSortChanged: (newest) {
-                _isNewestFirst = newest;
-                _recomputeFiltered();
-              },
+              // [FIX #5] Khi bộ lọc thay đổi: chỉ cần setState để cập nhật
+              // biến state. build() sẽ tự chạy lại và tính filteredList mới.
+              // Không cần gọi _recomputeFiltered() thủ công nữa.
+              onTypeChanged: (type) => setState(() => _selectedType = type),
+              onLevelChanged: (lvl) => setState(() => _selectedLevel = lvl),
+              onSortChanged: (newest) => setState(() => _isNewestFirst = newest),
             ),
           ),
           if (baseList.isEmpty)
@@ -225,15 +230,12 @@ class _BaseReportTabState extends State<BaseReportTab> {
                   (context, index) => RXContainer(
                     reportModel: filteredList[index],
                     onTap: () async {
-                      // Lưu provider trước khi await — tránh use_build_context_synchronously
-                      final provider = context.read<ReportProvider>();
+                      // Chỉ mở màn hình Chi tiết. Việc update/xóa local sẽ do
+                      // DetailReportScreen tự gọi Provider. Không cần gọi loadReports nữa!
                       await context.pushNamed(
                         RouteNames.detailReport,
                         extra: filteredList[index],
                       );
-                      if (mounted) {
-                        provider.loadReports(reset: true);
-                      }
                     },
                   ),
                   childCount: filteredList.length,

@@ -29,9 +29,10 @@ class RXContainer extends StatelessWidget {
         borderRadius: AppStyles.brL,
         child: Padding(
           padding: const EdgeInsets.all(AppStyles.spaceM),
-          child: IntrinsicHeight(
-            child: Row(
-              children: [
+          // ✅ Fix (Performance): Xóa bỏ IntrinsicHeight để tránh render 2 lần (double-pass layout).
+          // Giúp cải thiện mạnh mẽ hiệu năng (CPU) khi cuộn các danh sách dài.
+          child: Row(
+            children: [
                 // Cột trái: Thông tin chính
                 Expanded(
                   child: Column(
@@ -113,7 +114,6 @@ class RXContainer extends StatelessWidget {
                 ),
               ],
             ),
-          ),
         ),
       ),
     );

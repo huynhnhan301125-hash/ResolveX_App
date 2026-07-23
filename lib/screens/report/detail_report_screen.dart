@@ -1,4 +1,7 @@
+import 'dart:async'; // ✅ Bổ sung thư viện cho Timer
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:resolvex_mobile_app/providers/report_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:resolvex_mobile_app/models/employee_model.dart';
@@ -92,6 +95,8 @@ class _DetailReportScreenState extends State<DetailReportScreen> {
     // Nếu có báo cáo trả về → cập nhật UI hiện tại ngay, không cần fetch lại
     if (updatedReport != null && mounted) {
       setState(() => _report = updatedReport);
+      // Cập nhật ngay vào danh sách tổng mà không cần load lại từ đầu
+      context.read<ReportProvider>().updateReportLocally(updatedReport);
     }
   }
 
@@ -140,9 +145,10 @@ class _DetailReportScreenState extends State<DetailReportScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        // Quay về màn hình trước và báo đã xóa (truyền null signal)
-        // Màn hình danh sách sẽ bắt signal này để xóa item khỏi list
-        context.pop('deleted');
+        // Trực tiếp xóa báo cáo khỏi danh sách tổng trong Provider
+        context.read<ReportProvider>().removeReportLocally(_report.reportId);
+        // Đóng màn hình
+        context.pop();
       }
     } catch (e) {
       if (mounted) {
@@ -326,6 +332,7 @@ class _EditCountdownBanner extends StatefulWidget {
 
 class _EditCountdownBannerState extends State<_EditCountdownBanner> {
   late int _seconds;
+  Timer? _timer; // ✅ Fix: Khai báo tham chiếu tới Timer để có thể HỦY
 
   @override
   void initState() {
@@ -335,14 +342,30 @@ class _EditCountdownBannerState extends State<_EditCountdownBanner> {
   }
 
   void _startCountdown() {
-    // Dùng Future.delayed lặp để đếm ngược mỗi giây
-    if (_seconds <= 0) return;
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted && _seconds > 0) {
-        setState(() => _seconds--);
-        _startCountdown(); // Gọi đệ quy để tiếp tục đếm
+    // -------------------------------------------------------------------------
+    // 💡 TẠI SAO LẠI CẦN BỘ ĐẾM 1 GIÂY Ở ĐÂY?
+    // 1. Nghiệp vụ: Nhân viên chỉ có 10 phút đầu tiên để Sửa/Xóa báo cáo của mình.
+    // 2. Tác dụng: Tạo nhịp đập mỗi 1 giây để cập nhật đồng hồ đếm ngược trên UI.
+    //    (Cứ qua 1s -> trừ đi 1s trong biến _seconds -> gọi setState để vẽ lại số)
+    // -------------------------------------------------------------------------
+    
+    // ✅ Fix (Memory Leak): Dùng Timer.periodic thay vì Future.delayed đệ quy
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      // Nếu màn hình đã bị thoát (!mounted) hoặc đã đếm về 0 -> Dừng bộ đếm ngay
+      if (!mounted || _seconds <= 0) {
+        timer.cancel(); 
+        return;
       }
+      // Nếu chưa hết, trừ 1 giây và ra lệnh vẽ lại giao diện (Render)
+      setState(() => _seconds--);
     });
+  }
+
+  @override
+  void dispose() {
+    // ✅ BẮT BUỘC: Hủy bỏ Timer để giải phóng RAM hoàn toàn khi người dùng thoát màn hình
+    _timer?.cancel();
+    super.dispose();
   }
 
   /// Format giây thành "MM:SS" (ví dụ: 530 giây → "08:50")

@@ -162,13 +162,10 @@ class _HomeTabState extends State<HomeTab> {
                 (context, index) => RXContainer(
                   reportModel: recentReports[index],
                   onTap: () async {
-                    // Lưu provider trước khi await — tránh use_build_context_synchronously
-                    final provider = context.read<ReportProvider>();
+                    // Chỉ cần mở màn hình Chi tiết. Việc cập nhật/xóa sẽ do DetailScreen 
+                    // tự động báo cho ReportProvider xử lý ngầm. Không cần tải lại (reload)!
                     await context.pushNamed(RouteNames.detailReport, extra: recentReports[index]);
-                    // Làm mới dữ liệu sau khi quay lại từ màn hình chi tiết.
-                    if (mounted) {
-                      provider.loadReports(reset: true);
-                    }
+
                   },
                 ),
                 childCount: recentReports.length,

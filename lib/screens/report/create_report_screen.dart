@@ -6,11 +6,15 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:resolvex_mobile_app/models/report_model.dart';
 import 'package:resolvex_mobile_app/services/report_service.dart';
+import 'package:resolvex_mobile_app/services/auth_service.dart';
+// [FIX #7] Thay import supabase_flutter bằng auth_service.dart.
+// Tầng View (Screen) không được phép gọi thẳng vào SupabaseClient.
+// Phải đi qua AuthService (tầng Service) để lấy currentUser —
+// đúng phân tầng kiến trúc, dễ test và dễ thay thế sau này.
 import 'package:resolvex_mobile_app/core/theme/theme.dart';
 import 'package:resolvex_mobile_app/utils/app_validate.dart';
 import 'package:resolvex_mobile_app/widgets/rx_customscrollview.dart';
 import 'package:resolvex_mobile_app/widgets/rx_textfield.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CreateReportScreen extends StatefulWidget {
   const CreateReportScreen({super.key});
@@ -35,10 +39,44 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
   File? _selectedImage;
   // Thời gian xảy ra sự cố (Mặc định lấy thời gian hiện tại)
   DateTime _selectedDate = DateTime.now();
-  // Thư viện ImagePicker để tương tác với máy ảnh / thư viện của máy
-  final ImagePicker _picker = ImagePicker();
-  // Lây ID của user đang đăng nhập bằng supabase
-  String currentId = Supabase.instance.client.auth.currentUser!.id;
+  // ✅ Fix (Memory): Xóa khai báo ImagePicker toàn cục để tránh chiếm dụng RAM ngay khi mở màn hình.
+
+  // ✅ Fix (Crash): Dùng biến nullable cho ID thay vì force-unwrap (!) trực tiếp tại lúc khởi tạo.
+  String? _currentId;
+
+  // [FIX #8] Biến kiểm soát trạng thái đang gửi báo cáo.
+  // true  = đang gửi → nút bấm bị vô hiệu, hiện icon xoay xoay (Loading Spinner).
+  // false = rảnh rỗi → nút bấm bình thường, hiện chữ "GỬi BÁO CÁO".
+  //
+  // Lợi thế so với showDialog loading popup:
+  //   - Không cần quản lý 2 lệnh Navigator.pop() riêng (1 cho dialog, 1 cho screen).
+  //   - Không lo rủi ro pop nhầm màn hình nếu logic phức tạp hơn sau này.
+  //   - UX hiện đại hơn: người dùng vẫn nhìn thấy form, không bị che bởi hộp thoại.
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // [FIX #7] Lấy currentUser qua AuthService thay vì gọi thẳng Supabase.instance
+    //
+    // VẤN ĐỀ CŨ: Supabase.instance.client.auth.currentUser?.id
+    //   Tầng View (Screen) chọc thẳng vào SupabaseClient — "vượt quyền" tầng Service.
+    //   Vi phạm nguyên tắc phân tầng: View → Service → Database.
+    //   Khó test: không thể mock Supabase.instance trong Unit Test.
+    //
+    // GIẢI PHÁP: Dùng AuthService().currentUser?.id
+    //   AuthService đã có getter currentUser (auth_service.dart line 78).
+    //   Tầng View chỉ biết AuthService tồn tại, không biết bên trong dùng thư viện gì.
+    _currentId = AuthService().currentUser?.id;
+
+    if (_currentId == null && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Phiên đăng nhập hết hạn!'), backgroundColor: Colors.red),
+        );
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -76,77 +114,122 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    final XFile? image = await _picker.pickImage(source: source, imageQuality: 70);
+    // ✅ Fix (Memory): Khởi tạo ImagePicker (Lazy initialization) chỉ khi người dùng bấm chụp/chọn ảnh
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: source, imageQuality: 70);
     if (image != null) setState(() => _selectedImage = File(image.path));
   }
 
   /// Hàm xử lý gửi báo cáo sự cố
   Future<void> _submitReport() async {
-    if (_formKey.currentState!.validate()) {
+    // Đảm bảo user id hợp lệ trước khi gửi
+    if (_currentId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể gửi báo cáo vì chưa xác thực người dùng!'), backgroundColor: Colors.red),
+      );
+      return;
+    }
 
-      // 1. Hiện loading dialog TRƯỚC khi gọi mạng
-      // barrierDismissible: false -> người dùng không bấm ra ngoài tắt được
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text('Đang gửi báo cáo sự cố...'),
-            ],
-          ),
-        ),
+    if (!_formKey.currentState!.validate()) return;
+
+    // [FIX #8] Bật trạng thái loading ngay khi bắt đầu gửi.
+    // setState → build() chạy lại → nút chuyển sang hiện CircularProgressIndicator
+    // và onPressed = null (không cho bấm nhiều lần).
+    setState(() => _isSubmitting = true);
+
+    try {
+      // GỎi Supabase + AWAIT (chờ DB insert xong mới chạy tiếp)
+      final ReportModel savedReport = await ReportService().createReport(
+        empId: _currentId!,
+        problemRoom: _roomController.text.trim(),
+        problemType: _selectedType,
+        level: _selectedLevel,
+        problemDescription: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
       );
 
-      try {
-        // 2. GỌI SUPABASE + AWAIT (chờ DB insert xong mới chạy tiếp)
-        // Thiếu await -> app không chờ -> đóng màn hình ngay dù DB chưa xong
-        // savedReport là object THẬT được DB trả về (có reportId, reportDate thật)
-        final ReportModel savedReport = await ReportService().createReport(
-          empId: currentId, // UID thật lấy từ Supabase Auth session (dòng 43)
-          problemRoom: _roomController.text.trim(),
-          problemType: _selectedType,
-          level: _selectedLevel,
-          problemDescription: _descriptionController.text.trim().isEmpty
-              ? null
-              : _descriptionController.text.trim(),
-        );
-
-        if (kDebugMode) {
-          print('=== BÁO CÁO ĐÃ LƯU LÊN SUPABASE ===');
-          print('Report ID thật: ${savedReport.reportId}');
-          print('Phòng: ${savedReport.problemRoom}');
-          print('Loại lỗi: ${savedReport.problemType.label}');
-          print('Thời gian: ${savedReport.reportDate}');
-        }
-
-        if (mounted) {
-          // 3. Tắt loading dialog
-          Navigator.of(context, rootNavigator: true).pop();
-          // 4. Đóng màn hình và trả object THẬT về cho MainEmployeeScreen
-          // MainEmployeeScreen dùng object này để insert vào listReport -> UI tự cập nhật
-          context.pop(savedReport);
-        }
-      } catch (e) {
-        // Nếu lỗi (mất mạng, RLS từ chối...) -> tắt loading, hiện snackbar đỏ
-        if (mounted) {
-          Navigator.of(context, rootNavigator: true).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Gửi báo cáo thất bại: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+      if (kDebugMode) {
+        print('=== BÁO CÁO ĐÃ LƯU LÊN SUPABASE ===');
+        print('Report ID thật: ${savedReport.reportId}');
+        print('Phòng: ${savedReport.problemRoom}');
+        print('Loại lỗi: ${savedReport.problemType.label}');
+        print('Thời gian: ${savedReport.reportDate}');
       }
+
+      // Đóng màn hình và trả object THẬT về cho màn hình gọi.
+      // MainEmployeeScreen dùng object này để insert vào listReport → UI tự cập nhật.
+      if (mounted) context.pop(savedReport);
+    } catch (e) {
+      // Nếu lỗi (mất mạng, RLS từ chối...) → hiện snackbar đỏ
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gửi báo cáo thất bại: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      // [FIX #8] finally LUON chạy dù thành công hay lỗi.
+      // Tắt loading để nút trở lại bình thường nếu có lỗi (không đóng màn hình).
+      // mounted check: tránh gọi setState() sau khi màn hình đã được đóng (dispose).
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // [FIX — Nút ghím cố định + Loading Button]
+      // Đưa nút ra khỏi ScrollView, đặt vào bottomNavigationBar.
+      // SafeArea tự động thêm padding phía dưới bằng đúng chiều cao
+      // thanh 3 nút hệ thống — không cần hardcode, đúng mọi dòng máy.
+      //
+      // [FIX #8] Nút có 2 trạng thái:
+      //   _isSubmitting = false: Hiện chữ "GỬi BÁO CÁO", bấm được bình thường.
+      //   _isSubmitting = true : onPressed = null (khóa nút), hiện vòng xoay loading.
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppStyles.spaceL,
+            AppStyles.spaceS,
+            AppStyles.spaceL,
+            AppStyles.spaceM,
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            height: 55,
+            child: ElevatedButton(
+              // _isSubmitting = true → null = vô hiệu hóa nút (không cho bấm nhiều lần)
+              onPressed: _isSubmitting ? null : _submitReport,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.brandDark,
+                shape: RoundedRectangleBorder(borderRadius: AppStyles.brL),
+              ),
+              child: _isSubmitting
+                  // Hiện vòng xoay (Spinner) ngay trên nút khi đang gửi
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.black,
+                      ),
+                    )
+                  // Hiện chữ bình thường khi rảnh rỗi
+                  : const Text(
+                      'GỬi BÁO CÁO',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
       body: Form(
         key: _formKey,
         child: GestureDetector(
@@ -158,7 +241,17 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
             showBackButton: true,
             sliver: [
               SliverPadding(
-                padding: const EdgeInsets.all(AppStyles.spaceL),
+                // [FIX — System Navigation Bar]
+                // Trên Android modern (Edge-to-Edge), app vẽ xuyên qua cả vùng thanh 3 nút hệ thống.
+                // MediaQuery.of(context).padding.bottom trả về chiều cao của vùng đó (ví dụ: 48px).
+                // Cộng thêm vào padding.bottom để nút "GỬI BÁO CÁO" không bị thanh đó đè lên.
+                // Không cần hardcode giá trị cứng — tự động chính xác cho mọi dòng máy.
+                padding: EdgeInsets.only(
+                  left: AppStyles.spaceL,
+                  right: AppStyles.spaceL,
+                  top: AppStyles.spaceL,
+                  bottom: AppStyles.spaceL + MediaQuery.of(context).padding.bottom,
+                ),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     // 1. Vị trí (Phòng)
@@ -295,24 +388,8 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
                           ),
                         ],
                       ),
-                    const SizedBox(height: AppStyles.spaceXXXL),
-
-                    // 8. Nút Gửi
-                    SizedBox(
-                      width: double.infinity,
-                      height: 55,
-                      child: ElevatedButton(
-                        onPressed: _submitReport,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.brandDark,
-                          shape: RoundedRectangleBorder(borderRadius: AppStyles.brL),
-                        ),
-                        child: Text(
-                          'GỬI BÁO CÁO',
-                          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
-                        ),
-                      ),
-                    ),
+                    // Nút "GỬI BÁO CÁO" đã được chuyển ra bottomNavigationBar
+                    // phía trên để ghim cố định, không còn nằm trong ScrollView nữa.
                   ]),
                 ),
               ),

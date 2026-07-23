@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:resolvex_mobile_app/core/theme/theme.dart';
+import '../core/theme/app_colors.dart';
+
+// Import theme.dart đã được xoá vì RXTextField không còn hardcode màu nào
+// từ AppColors nữa. Mọi màu sắc (label, text, border) đều được kế thừa
+// từ inputDecorationTheme và textTheme đã cấu hình sẵn trong AppThemes.
+// Xem: lib/core/theme/app_themes.dart — inputDecorationTheme.
 
 class RXTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -43,20 +48,17 @@ class RXTextField extends StatelessWidget {
       keyboardType: keyboardType,
       maxLines: isPassword ? 1 : maxLines,
       minLines: minLines,
-      style: const TextStyle(color: AppColors.textPrimary), // Chữ đen trên nền trắng
+      // Chữ luôn màu đen (textPrimary) vì nền của TextField luôn được ép màu trắng (surfaceWhite) ở cả 2 mode.
+      style: const TextStyle(color: AppColors.textPrimary), 
       decoration: InputDecoration(
         labelText: labelText,
-        labelStyle: const TextStyle(color: AppColors.textSecondary),
+        // [FIX] Xoá hardcode labelStyle: TextStyle(color: AppColors.textSecondary).
+        // AppColors.textSecondary = black54 — chỉ đúng với light mode.
+        // Nay bỏ trống → Flutter kế thừa labelStyle và floatingLabelStyle
+        // từ inputDecorationTheme trong AppThemes (đã có [FIX #3]).
+        // → Tự động đúng màu cho cả light lẫn dark mode.
         prefixIcon: prefixIcon,
         suffixIcon: suffixIcon,
-        errorBorder: OutlineInputBorder(
-          borderRadius: AppStyles.brL,
-          borderSide: const BorderSide(width: 1.5, color: AppColors.danger),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: AppStyles.brL,
-          borderSide: const BorderSide(width: 2, color: AppColors.danger),
-        ),
       ),
     );
   }
